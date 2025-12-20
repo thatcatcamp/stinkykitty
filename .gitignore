@@ -1,0 +1,54 @@
+# Binaries
+stinky
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Runtime data
+/var/lib/stinkykitty/
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration files (may contain secrets)
+/etc/stinkykitty/
+config.yaml
+*.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.tar.gz
+
+# Log files
+*.log
+
+# Temporary files
+tmp/
+temp/
