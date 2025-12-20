@@ -24,7 +24,7 @@ type User struct {
 type Site struct {
 	ID            uint           `gorm:"primaryKey"`
 	Subdomain     string         `gorm:"uniqueIndex"`
-	CustomDomain  string         `gorm:"uniqueIndex"`
+	CustomDomain  *string        `gorm:"uniqueIndex"`
 	OwnerID       uint           `gorm:"not null"`
 	SiteDir       string         `gorm:"not null"` // Directory path for this site
 	DatabaseType  string         `gorm:"default:sqlite"` // "sqlite" or "mariadb"
@@ -52,8 +52,8 @@ type Site struct {
 // SiteUser represents the many-to-many relationship between users and sites
 type SiteUser struct {
 	ID        uint           `gorm:"primaryKey"`
-	UserID    uint           `gorm:"not null"`
-	SiteID    uint           `gorm:"not null"`
+	UserID    uint           `gorm:"uniqueIndex:idx_user_site;not null"`
+	SiteID    uint           `gorm:"uniqueIndex:idx_user_site;not null"`
 	Role      string         `gorm:"not null"` // "owner", "admin", "editor"
 	CreatedAt time.Time
 	UpdatedAt time.Time
