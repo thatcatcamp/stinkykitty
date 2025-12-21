@@ -1,0 +1,14 @@
+[Unit]
+Description=StinkyKitty CMS
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+Environment=STINKY_CONFIG=/etc/stinkykitty/config.yaml
+ExecStart=/usr/bin/stinky server start
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

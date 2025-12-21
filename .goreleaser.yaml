@@ -1,0 +1,65 @@
+version: 2
+project_name: stinkykitty
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    main: ./cmd/stinky
+    binary: stinky
+
+nfpms:
+  - id: stinkykitty
+    package_name: stinkykitty
+    vendor: ThatCatCamp
+    homepage: https://github.com/thatcatcamp/stinkykitty
+    maintainer: ThatCatCamp <hello@thatcatcamp.com>
+    description: StinkyKitty - Multi-tenant CMS for Burning Man camps
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: stinkykitty.service
+        dst: /usr/lib/systemd/system/stinkykitty.service
+    scripts:
+      postinstall: scripts/postinstall.sh
+
+signs:
+  - id: cosign
+    cmd: cosign
+    args:
+      - "sign-blob"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes" # for keyless signing
+    artifacts: checksum
+  - id: cosign-packages
+    cmd: cosign
+    args:
+      - "sign-blob"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes" # for keyless signing
+    artifacts: package
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}+{{ .ShortCommit }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
