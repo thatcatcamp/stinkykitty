@@ -102,6 +102,31 @@ jobs:
         with:
           name: packages
           path: pkg
+      - name: Diagnostics - Check SSH Key
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::DEPLOY_SSH_KEY is empty. Did you add it to Repository Secrets?"
+            exit 1
+          fi
+          echo "DEPLOY_SSH_KEY length: ${#KEY} characters"
+          
+          if [[ "$KEY" == ssh-rsa* ]] || [[ "$KEY" == ssh-ed25519* ]]; then
+            echo "::error::DEPLOY_SSH_KEY looks like a PUBLIC key (starts with 'ssh-rsa' or 'ssh-ed25519'). You MUST provide the PRIVATE key (starts with '-----BEGIN ...')."
+            exit 1
+          fi
+
+          if [[ ! "$KEY" =~ "BEGIN" ]]; then
+            echo "::error::DEPLOY_SSH_KEY is missing the '-----BEGIN' header. Please copy the ENTIRE content of your private key file."
+            exit 1
+          fi
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Diagnostics - Check Connectivity
+        run: |
+          echo "Pinging 143.244.181.38..."
+          ping -c 3 143.244.181.38 || echo "Ping failed (maybe ICMP is blocked?)"
+          echo "Scanning port 22..."
+          nc -zv 143.244.181.38 22 || echo "::warning::Port 22 is NOT reachable at 143.244.181.38"
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.2.1
         with:
