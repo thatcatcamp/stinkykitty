@@ -35,6 +35,7 @@ nfpms:
 
 signs:
   - id: cosign
+    ignore_error: true # allow release even if public sigstore infra is flaky
     cmd: cosign
     args:
       - "sign-blob"
@@ -43,6 +44,7 @@ signs:
       - "--yes" # for keyless signing
     artifacts: checksum
   - id: cosign-packages
+    ignore_error: true
     cmd: cosign
     args:
       - "sign-blob"
