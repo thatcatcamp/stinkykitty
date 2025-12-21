@@ -120,3 +120,51 @@ func TestIPFilterNoAllowlist(t *testing.T) {
 		t.Error("Expected allowed when no allowlist configured")
 	}
 }
+
+func TestIPFilterXForwardedFor(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	blocklist := []string{"192.168.1.0/24"}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/admin", nil)
+	// Set RemoteAddr to an allowed IP (should be ignored)
+	c.Request.RemoteAddr = "10.0.0.1:1234"
+	// Set X-Forwarded-For header to a blocked IP (should be used)
+	c.Request.Header.Set("X-Forwarded-For", "192.168.1.100")
+
+	middleware := IPFilterMiddleware(blocklist)
+	middleware(c)
+
+	if w.Code != 403 {
+		t.Errorf("Expected 403 for blocked IP in X-Forwarded-For, got %d", w.Code)
+	}
+}
+
+func TestIPFilterGlobalAllowedButNotInSiteAllowlist(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// Global blocklist does NOT include 10.0.0.0/8
+	blocklist := []string{"192.168.1.0/24"}
+
+	// Site with allowlist that does NOT include 10.0.0.0/8
+	site := &models.Site{
+		Subdomain:  "test",
+		AllowedIPs: `["172.16.0.0/12"]`, // Only allows 172.16.x.x
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest("GET", "/admin", nil)
+	// IP that passes global blocklist but fails site allowlist
+	c.Request.RemoteAddr = "10.0.0.100:1234"
+	c.Set("site", site)
+
+	middleware := IPFilterMiddleware(blocklist)
+	middleware(c)
+
+	if w.Code != 403 {
+		t.Errorf("Expected 403 for IP not in site allowlist, got %d", w.Code)
+	}
+}
