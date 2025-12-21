@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -39,6 +41,7 @@ type Site struct {
 	SiteTagline   string
 	LogoPath      string
 	FontPair      string         `gorm:"default:system"`
+	AllowedIPs    string         `gorm:"type:text"` // JSON array of CIDR ranges
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     gorm.DeletedAt `gorm:"index"`
@@ -114,4 +117,81 @@ func (Page) TableName() string {
 
 func (Block) TableName() string {
 	return "blocks"
+}
+
+// GetAllowedIPs returns the list of allowed IP ranges for this site
+func (s *Site) GetAllowedIPs() ([]string, error) {
+	if s.AllowedIPs == "" {
+		return []string{}, nil
+	}
+
+	var ips []string
+	if err := json.Unmarshal([]byte(s.AllowedIPs), &ips); err != nil {
+		return nil, err
+	}
+
+	return ips, nil
+}
+
+// SetAllowedIPs sets the allowed IP ranges for this site
+func (s *Site) SetAllowedIPs(ips []string) error {
+	if len(ips) == 0 {
+		s.AllowedIPs = ""
+		return nil
+	}
+
+	data, err := json.Marshal(ips)
+	if err != nil {
+		return err
+	}
+
+	s.AllowedIPs = string(data)
+	return nil
+}
+
+// AddAllowedIP adds a new IP range to the allowlist
+func (s *Site) AddAllowedIP(cidr string) error {
+	ips, err := s.GetAllowedIPs()
+	if err != nil {
+		return err
+	}
+
+	// Check if already exists
+	for _, ip := range ips {
+		if ip == cidr {
+			return nil // Already exists, no error
+		}
+	}
+
+	ips = append(ips, cidr)
+	return s.SetAllowedIPs(ips)
+}
+
+// RemoveAllowedIP removes an IP range from the allowlist
+func (s *Site) RemoveAllowedIP(cidr string) error {
+	ips, err := s.GetAllowedIPs()
+	if err != nil {
+		return err
+	}
+
+	if len(ips) == 0 {
+		return fmt.Errorf("IP range not found: %s", cidr)
+	}
+
+	// Find and remove the IP
+	found := false
+	newIPs := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		if ip == cidr {
+			found = true
+			continue
+		}
+		newIPs = append(newIPs, ip)
+	}
+
+	if !found {
+		return fmt.Errorf("IP range not found: %s", cidr)
+	}
+
+	return s.SetAllowedIPs(newIPs)
 }
