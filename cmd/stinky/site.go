@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -209,6 +212,182 @@ var siteAddDomainCmd = &cobra.Command{
 	},
 }
 
+var siteAllowIPCmd = &cobra.Command{
+	Use:   "allow-ip <subdomain> <cidr>",
+	Short: "Add an IP or CIDR range to site's allowlist",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := initSystemDB(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		subdomain := args[0]
+		cidr := args[1]
+
+		// Validate CIDR format
+		_, _, err := net.ParseCIDR(cidr)
+		if err != nil {
+			// Try as single IP
+			ip := net.ParseIP(cidr)
+			if ip == nil {
+				fmt.Fprintf(os.Stderr, "Error: invalid CIDR or IP address: %s\n", cidr)
+				os.Exit(1)
+			}
+			// Convert single IP to CIDR
+			if strings.Contains(cidr, ":") {
+				cidr = cidr + "/128" // IPv6
+			} else {
+				cidr = cidr + "/32" // IPv4
+			}
+		}
+
+		site, err := sites.GetSiteBySubdomain(db.GetDB(), subdomain)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Parse existing allowlist
+		var allowlist []string
+		if site.AllowedIPs != "" {
+			if err := json.Unmarshal([]byte(site.AllowedIPs), &allowlist); err != nil {
+				fmt.Fprintf(os.Stderr, "Error parsing allowlist: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// Add new CIDR if not already present
+		for _, existing := range allowlist {
+			if existing == cidr {
+				fmt.Printf("IP range %s already in allowlist for %s\n", cidr, subdomain)
+				return
+			}
+		}
+
+		allowlist = append(allowlist, cidr)
+
+		// Marshal back to JSON
+		allowedIPsJSON, err := json.Marshal(allowlist)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		site.AllowedIPs = string(allowedIPsJSON)
+		if err := db.GetDB().Save(site).Error; err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving site: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Added %s to allowlist for %s\n", cidr, subdomain)
+	},
+}
+
+var siteRemoveAllowedIPCmd = &cobra.Command{
+	Use:   "remove-allowed-ip <subdomain> <cidr>",
+	Short: "Remove an IP or CIDR range from site's allowlist",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := initSystemDB(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		subdomain := args[0]
+		cidr := args[1]
+
+		site, err := sites.GetSiteBySubdomain(db.GetDB(), subdomain)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if site.AllowedIPs == "" {
+			fmt.Printf("No allowlist configured for %s\n", subdomain)
+			return
+		}
+
+		var allowlist []string
+		if err := json.Unmarshal([]byte(site.AllowedIPs), &allowlist); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing allowlist: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Remove CIDR
+		newAllowlist := []string{}
+		found := false
+		for _, existing := range allowlist {
+			if existing == cidr {
+				found = true
+				continue
+			}
+			newAllowlist = append(newAllowlist, existing)
+		}
+
+		if !found {
+			fmt.Printf("IP range %s not in allowlist for %s\n", cidr, subdomain)
+			return
+		}
+
+		// Update site
+		if len(newAllowlist) == 0 {
+			site.AllowedIPs = ""
+		} else {
+			allowedIPsJSON, err := json.Marshal(newAllowlist)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			site.AllowedIPs = string(allowedIPsJSON)
+		}
+
+		if err := db.GetDB().Save(site).Error; err != nil {
+			fmt.Fprintf(os.Stderr, "Error saving site: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Removed %s from allowlist for %s\n", cidr, subdomain)
+	},
+}
+
+var siteListAllowedIPsCmd = &cobra.Command{
+	Use:   "list-allowed-ips <subdomain>",
+	Short: "List all allowed IPs for a site",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := initSystemDB(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		subdomain := args[0]
+
+		site, err := sites.GetSiteBySubdomain(db.GetDB(), subdomain)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if site.AllowedIPs == "" {
+			fmt.Printf("No IP allowlist configured for %s\n", subdomain)
+			fmt.Println("All IPs are allowed (only global blocklist applies)")
+			return
+		}
+
+		var allowlist []string
+		if err := json.Unmarshal([]byte(site.AllowedIPs), &allowlist); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing allowlist: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Allowed IPs for %s:\n", subdomain)
+		for _, cidr := range allowlist {
+			fmt.Printf("  - %s\n", cidr)
+		}
+	},
+}
+
 func init() {
 	siteCreateCmd.Flags().String("owner", "", "Email of the site owner (required)")
 	siteAddUserCmd.Flags().String("role", "editor", "User role (owner, admin, editor)")
@@ -219,5 +398,8 @@ func init() {
 	siteCmd.AddCommand(siteAddUserCmd)
 	siteCmd.AddCommand(siteListUsersCmd)
 	siteCmd.AddCommand(siteAddDomainCmd)
+	siteCmd.AddCommand(siteAllowIPCmd)
+	siteCmd.AddCommand(siteRemoveAllowedIPCmd)
+	siteCmd.AddCommand(siteListAllowedIPsCmd)
 	rootCmd.AddCommand(siteCmd)
 }
