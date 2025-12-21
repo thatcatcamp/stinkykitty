@@ -10,6 +10,9 @@ if cosign sign-blob --output-signature="$SIGNATURE" "$ARTIFACT" --yes; then
     echo "Successfully signed $ARTIFACT"
 else
     echo "Warning: Failed to sign $ARTIFACT. Proceeding without signature due to infrastructure flakiness."
+    # We MUST create the file even if empty, otherwise GoReleaser fails during the upload phase
+    # specifically when it tries to open the non-existent .sig file.
+    touch "$SIGNATURE"
     # Exit with 0 to ensure GoReleaser doesn't fail the build
     exit 0
 fi
