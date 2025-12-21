@@ -94,10 +94,12 @@ func extractIP(c *gin.Context) net.IP {
 	}
 
 	// Fall back to RemoteAddr
-	remoteAddr := c.Request.RemoteAddr
-	if idx := strings.LastIndex(remoteAddr, ":"); idx != -1 {
-		remoteAddr = remoteAddr[:idx]
+	// Use SplitHostPort to properly handle IPv6 addresses with brackets
+	host, _, err := net.SplitHostPort(c.Request.RemoteAddr)
+	if err != nil {
+		// If no port, use the whole string
+		host = c.Request.RemoteAddr
 	}
 
-	return net.ParseIP(remoteAddr)
+	return net.ParseIP(host)
 }
