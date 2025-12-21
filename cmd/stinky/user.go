@@ -9,6 +9,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/users"
+	"golang.org/x/term"
 )
 
 var userCmd = &cobra.Command{
@@ -29,10 +30,15 @@ var userCreateCmd = &cobra.Command{
 
 		email := args[0]
 
-		// Get password from stdin
+		// Get password from stdin (hidden)
 		fmt.Print("Enter password: ")
-		var password string
-		fmt.Scanln(&password)
+		passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading password: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println() // Print newline after hidden input
+		password := string(passwordBytes)
 
 		user, err := users.CreateUser(db.GetDB(), email, password)
 		if err != nil {
