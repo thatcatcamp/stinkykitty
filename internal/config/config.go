@@ -48,6 +48,7 @@ func setDefaults() {
 	v.SetDefault("server.http_port", "80")
 	v.SetDefault("server.https_port", "443")
 	v.SetDefault("server.behind_proxy", false)
+	v.SetDefault("server.base_domain", "localhost")
 
 	// Storage defaults
 	v.SetDefault("storage.data_dir", "/var/lib/stinkykitty")
