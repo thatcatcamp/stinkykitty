@@ -35,22 +35,16 @@ nfpms:
 
 signs:
   - id: cosign
-    ignore_error: true # allow release even if public sigstore infra is flaky
-    cmd: cosign
+    cmd: scripts/sign-wrapper.sh
     args:
-      - "sign-blob"
-      - "--output-signature=${signature}"
       - "${artifact}"
-      - "--yes" # for keyless signing
+      - "${signature}"
     artifacts: checksum
   - id: cosign-packages
-    ignore_error: true
-    cmd: cosign
+    cmd: scripts/sign-wrapper.sh
     args:
-      - "sign-blob"
-      - "--output-signature=${signature}"
       - "${artifact}"
-      - "--yes" # for keyless signing
+      - "${signature}"
     artifacts: package
 
 checksum:
