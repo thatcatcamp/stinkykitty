@@ -64,6 +64,11 @@ func setDefaults() {
 	// Database defaults
 	v.SetDefault("database.type", "sqlite")
 	v.SetDefault("database.path", "/var/lib/stinkykitty/stinkykitty.db")
+
+	// Auth defaults
+	v.SetDefault("auth.jwt_secret", "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR")
+	v.SetDefault("auth.jwt_expiry_hours", 8)
+	v.SetDefault("auth.bcrypt_cost", 12)
 }
 
 // GetString returns a config value as string
