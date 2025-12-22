@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
@@ -151,7 +153,7 @@ func LoginFormHandler(c *gin.Context) {
 
 // DashboardHandler renders the admin dashboard
 func DashboardHandler(c *gin.Context) {
-	// Get user from context (set by auth middleware)
+	// Get user and site from context (set by auth middleware)
 	userVal, exists := c.Get("user")
 	if !exists {
 		c.String(http.StatusUnauthorized, "Not authenticated")
@@ -166,6 +168,112 @@ func DashboardHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
-	c.String(http.StatusOK, "Admin Dashboard\n\nUser: %s\nSite: %s\nGlobal Admin: %v",
-		user.Email, site.Subdomain, user.IsGlobalAdmin)
+	// Load all pages for this site
+	var pages []models.Page
+	db.GetDB().Where("site_id = ?", site.ID).Order("slug ASC").Find(&pages)
+
+	// Build pages list HTML
+	var pagesList strings.Builder
+	homepageExists := false
+
+	for _, page := range pages {
+		if page.Slug == "/" {
+			homepageExists = true
+			status := "Draft"
+			if page.Published {
+				status = "Published"
+			}
+			pagesList.WriteString(fmt.Sprintf(`
+				<div class="page-item">
+					<strong>Homepage</strong> <span class="status">%s</span>
+					<div class="actions">
+						<a href="/admin/pages/%d/edit" class="btn-small">Edit</a>
+					</div>
+				</div>
+			`, status, page.ID))
+		} else {
+			status := "Draft"
+			if page.Published {
+				status = "Published"
+			}
+			pagesList.WriteString(fmt.Sprintf(`
+				<div class="page-item">
+					<strong>%s</strong> <code>%s</code> <span class="status">%s</span>
+					<div class="actions">
+						<a href="/admin/pages/%d/edit" class="btn-small">Edit</a>
+						<form method="POST" action="/admin/pages/%d/delete" style="display:inline;" onsubmit="return confirm('Delete this page?')">
+							<button type="submit" class="btn-small btn-danger">Delete</button>
+						</form>
+					</div>
+				</div>
+			`, page.Title, page.Slug, status, page.ID, page.ID))
+		}
+	}
+
+	if !homepageExists {
+		pagesList.WriteString(`
+			<div class="page-item placeholder">
+				<em>No homepage yet</em>
+				<form method="POST" action="/admin/pages" style="display:inline;">
+					<input type="hidden" name="slug" value="/">
+					<input type="hidden" name="title" value="` + site.Subdomain + `">
+					<button type="submit" class="btn-small">Create Homepage</button>
+				</form>
+			</div>
+		`)
+	}
+
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Dashboard - ` + site.Subdomain + `</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 10px 0; font-size: 28px; color: #333; }
+        .user-info { color: #666; font-size: 14px; margin-bottom: 30px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { font-size: 18px; margin-bottom: 15px; color: #444; }
+        .page-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .page-item.placeholder { border-style: dashed; color: #999; }
+        .status { font-size: 12px; padding: 2px 8px; background: #e0e0e0; border-radius: 3px; margin-left: 10px; }
+        .actions { display: flex; gap: 8px; }
+        .btn { padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; }
+        .btn:hover { background: #0056b3; }
+        .btn-small { padding: 6px 12px; font-size: 13px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
+        .btn-small:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+        .logout { float: right; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <form method="POST" action="/admin/logout" class="logout">
+            <button type="submit" class="btn-small">Logout</button>
+        </form>
+        <h1>Admin Dashboard</h1>
+        <div class="user-info">
+            ` + user.Email + ` • ` + site.Subdomain + `
+        </div>
+
+        <div class="section">
+            <h2>Pages</h2>
+            ` + pagesList.String() + `
+            <div style="margin-top: 15px;">
+                <a href="/admin/pages/new" class="btn">+ Create New Page</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <a href="/" target="_blank" style="color: #007bff; text-decoration: none;">→ View Public Site</a>
+        </div>
+    </div>
+</body>
+</html>`
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
