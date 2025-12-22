@@ -123,14 +123,14 @@ jobs:
           KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       - name: Diagnostics - Check Connectivity
         run: |
-          echo "Pinging 143.244.181.38..."
-          ping -c 3 143.244.181.38 || echo "Ping failed (maybe ICMP is blocked?)"
+          echo "Pinging 216.250.115.223..."
+          ping -c 3 216.250.115.223 || echo "Ping failed (maybe ICMP is blocked?)"
           echo "Scanning port 22..."
-          nc -zv 143.244.181.38 22 || echo "::warning::Port 22 is NOT reachable at 143.244.181.38"
+          nc -zv 216.250.115.223 22 || echo "::warning::Port 22 is NOT reachable at 216.250.115.223"
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.2.1
         with:
-          host: 143.244.181.38
+          host: 216.250.115.223
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
@@ -140,7 +140,7 @@ jobs:
       - name: Copy package to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 143.244.181.38
+          host: 216.250.115.223
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: "pkg/*.deb"
@@ -149,7 +149,7 @@ jobs:
       - name: Install package on VPS
         uses: appleboy/ssh-action@v1.2.1
         with:
-          host: 143.244.181.38
+          host: 216.250.115.223
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
