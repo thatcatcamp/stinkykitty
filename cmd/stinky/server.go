@@ -69,8 +69,14 @@ var serverStartCmd = &cobra.Command{
 			adminGroup := siteGroup.Group("/admin")
 			adminGroup.Use(middleware.IPFilterMiddleware(blocklist))
 			{
-				// Login route (no auth required, but rate limited)
+				// Login form and submission (no auth required)
+				adminGroup.GET("/login", handlers.LoginFormHandler)
 				adminGroup.POST("/login", middleware.RateLimitMiddleware(loginRateLimiter, "/admin/login"), handlers.LoginHandler)
+
+				// Admin root - redirect to login
+				adminGroup.GET("/", func(c *gin.Context) {
+					c.Redirect(302, "/admin/login")
+				})
 
 				// Logout route (auth required)
 				adminGroup.POST("/logout", auth.RequireAuth(), handlers.LogoutHandler)
