@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
+	"github.com/thatcatcamp/stinkykitty/internal/auth"
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/handlers"
@@ -66,17 +67,19 @@ var serverStartCmd = &cobra.Command{
 
 			// Admin routes
 			adminGroup := siteGroup.Group("/admin")
-			adminGroup.Use(
-				middleware.IPFilterMiddleware(blocklist),
-				middleware.RateLimitMiddleware(loginRateLimiter, "/admin/login"),
-			)
+			adminGroup.Use(middleware.IPFilterMiddleware(blocklist))
 			{
-				adminGroup.POST("/login", func(c *gin.Context) {
-					c.String(200, "Admin login placeholder")
-				})
-				adminGroup.GET("/dashboard", func(c *gin.Context) {
-					c.String(200, "Admin dashboard placeholder")
-				})
+				// Login route (no auth required, but rate limited)
+				adminGroup.POST("/login", middleware.RateLimitMiddleware(loginRateLimiter, "/admin/login"), handlers.LoginHandler)
+
+				// Logout route (auth required)
+				adminGroup.POST("/logout", auth.RequireAuth(), handlers.LogoutHandler)
+
+				// Protected admin routes (auth required)
+				adminGroup.Use(auth.RequireAuth())
+				{
+					adminGroup.GET("/dashboard", handlers.DashboardHandler)
+				}
 			}
 		}
 
