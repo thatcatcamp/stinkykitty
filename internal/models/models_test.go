@@ -376,3 +376,42 @@ func TestSiteRemoveAllowedIPEmpty(t *testing.T) {
 		t.Error("Expected error when removing from empty list")
 	}
 }
+
+func TestUserIsGlobalAdmin(t *testing.T) {
+	db := setupTestDB(t)
+
+	// Create regular user
+	regularUser := User{
+		Email:        "regular@test.com",
+		PasswordHash: "hash",
+	}
+	result := db.Create(&regularUser)
+	if result.Error != nil {
+		t.Fatalf("Failed to create regular user: %v", result.Error)
+	}
+
+	// Create global admin
+	adminUser := User{
+		Email:         "admin@test.com",
+		PasswordHash:  "hash",
+		IsGlobalAdmin: true,
+	}
+	result = db.Create(&adminUser)
+	if result.Error != nil {
+		t.Fatalf("Failed to create admin user: %v", result.Error)
+	}
+
+	// Verify regular user is not global admin
+	var fetchedRegular User
+	db.First(&fetchedRegular, regularUser.ID)
+	if fetchedRegular.IsGlobalAdmin {
+		t.Error("Regular user should not be global admin")
+	}
+
+	// Verify admin user is global admin
+	var fetchedAdmin User
+	db.First(&fetchedAdmin, adminUser.ID)
+	if !fetchedAdmin.IsGlobalAdmin {
+		t.Error("Admin user should be global admin")
+	}
+}

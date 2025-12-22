@@ -10,12 +10,13 @@ import (
 
 // User represents a global user account
 type User struct {
-	ID           uint           `gorm:"primaryKey"`
-	Email        string         `gorm:"uniqueIndex;not null"`
-	PasswordHash string         `gorm:"not null"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	DeletedAt    gorm.DeletedAt `gorm:"index"`
+	ID            uint           `gorm:"primaryKey"`
+	Email         string         `gorm:"uniqueIndex;not null"`
+	PasswordHash  string         `gorm:"not null"`
+	IsGlobalAdmin bool           `gorm:"default:false"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     gorm.DeletedAt `gorm:"index"`
 
 	// Relationships
 	OwnedSites []Site     `gorm:"foreignKey:OwnerID"`
