@@ -48,3 +48,8 @@ func InitDB(dbType, dbPath string) error {
 func GetDB() *gorm.DB {
 	return DB
 }
+
+// SetDB sets the database connection (used for testing)
+func SetDB(database *gorm.DB) {
+	DB = database
+}
