@@ -415,3 +415,94 @@ func TestUserIsGlobalAdmin(t *testing.T) {
 		t.Error("Admin user should be global admin")
 	}
 }
+
+func TestPageModel(t *testing.T) {
+	database := setupTestDB(t)
+
+	// Create a site first
+	site := Site{Subdomain: "testcamp", OwnerID: 1, SiteDir: "/tmp/test"}
+	database.Create(&site)
+
+	// Create a page
+	page := Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Homepage",
+		Published: false,
+	}
+
+	result := database.Create(&page)
+	if result.Error != nil {
+		t.Fatalf("Failed to create page: %v", result.Error)
+	}
+
+	// Verify it was saved
+	var fetched Page
+	database.First(&fetched, page.ID)
+
+	if fetched.Slug != "/" {
+		t.Errorf("Expected slug '/', got '%s'", fetched.Slug)
+	}
+	if fetched.Title != "Homepage" {
+		t.Errorf("Expected title 'Homepage', got '%s'", fetched.Title)
+	}
+}
+
+func TestBlockModel(t *testing.T) {
+	database := setupTestDB(t)
+
+	// Create site and page
+	site := Site{Subdomain: "testcamp", OwnerID: 1, SiteDir: "/tmp/test"}
+	database.Create(&site)
+
+	page := Page{SiteID: site.ID, Slug: "/", Title: "Home"}
+	database.Create(&page)
+
+	// Create a block
+	block := Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Hello world"}`,
+	}
+
+	result := database.Create(&block)
+	if result.Error != nil {
+		t.Fatalf("Failed to create block: %v", result.Error)
+	}
+
+	// Verify it was saved
+	var fetched Block
+	database.First(&fetched, block.ID)
+
+	if fetched.Type != "text" {
+		t.Errorf("Expected type 'text', got '%s'", fetched.Type)
+	}
+	if fetched.Order != 0 {
+		t.Errorf("Expected order 0, got %d", fetched.Order)
+	}
+}
+
+func TestPageBlockRelationship(t *testing.T) {
+	database := setupTestDB(t)
+
+	site := Site{Subdomain: "testcamp", OwnerID: 1, SiteDir: "/tmp/test"}
+	database.Create(&site)
+
+	page := Page{SiteID: site.ID, Slug: "/", Title: "Home"}
+	database.Create(&page)
+
+	// Create multiple blocks
+	block1 := Block{PageID: page.ID, Type: "text", Order: 0, Data: `{"content":"First"}`}
+	block2 := Block{PageID: page.ID, Type: "text", Order: 1, Data: `{"content":"Second"}`}
+	database.Create(&block1)
+	database.Create(&block2)
+
+	// Load page with blocks
+	var fetchedPage Page
+	database.Preload("Blocks").First(&fetchedPage, page.ID)
+
+	if len(fetchedPage.Blocks) != 2 {
+		t.Errorf("Expected 2 blocks, got %d", len(fetchedPage.Blocks))
+	}
+}

@@ -68,18 +68,17 @@ type SiteUser struct {
 	Site Site `gorm:"foreignKey:SiteID"`
 }
 
-// Page represents a page on a site
+// Page represents a content page on a site
 type Page struct {
 	ID        uint           `gorm:"primaryKey"`
-	SiteID    uint           `gorm:"not null"`
-	Slug      string         `gorm:"not null"` // URL slug
+	SiteID    uint           `gorm:"not null;index:idx_site_slug,unique"`
+	Slug      string         `gorm:"not null;index:idx_site_slug,unique"` // "/" for homepage, "/about", etc
 	Title     string         `gorm:"not null"`
 	Published bool           `gorm:"default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 
-	// Relationships
 	Site   Site    `gorm:"foreignKey:SiteID"`
 	Blocks []Block `gorm:"foreignKey:PageID;constraint:OnDelete:CASCADE"`
 }
@@ -87,15 +86,14 @@ type Page struct {
 // Block represents a content block on a page
 type Block struct {
 	ID        uint           `gorm:"primaryKey"`
-	PageID    uint           `gorm:"not null"`
-	Type      string         `gorm:"not null"` // "hero", "text", "gallery", "video", "button"
-	Order     int            `gorm:"not null"` // Display order on page
-	Config    string         `gorm:"type:text"` // JSON configuration for the block
+	PageID    uint           `gorm:"not null;index"`
+	Type      string         `gorm:"not null"` // "text", "hero", "gallery", etc
+	Order     int            `gorm:"not null;default:0"`
+	Data      string         `gorm:"type:text"` // JSON blob with block-specific content
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 
-	// Relationships
 	Page Page `gorm:"foreignKey:PageID"`
 }
 
