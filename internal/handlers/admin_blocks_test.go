@@ -1,0 +1,381 @@
+package handlers
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/models"
+)
+
+func TestCreateBlockHandler_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create POST request with form data
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("type", "text")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Set("site", site)
+
+	// Execute
+	CreateBlockHandler(c)
+
+	// Assert redirect - check using c.Writer.Status() like other tests
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d. Body: %s", c.Writer.Status(), w.Body.String())
+	}
+
+	location := w.Header().Get("Location")
+	if !strings.Contains(location, "/admin/pages/1/blocks/") || !strings.HasSuffix(location, "/edit") {
+		t.Errorf("Expected redirect to /admin/pages/1/blocks/:id/edit, got %s", location)
+	}
+
+	// Verify block was created in database
+	var block models.Block
+	result := testDB.Where("page_id = ?", 1).First(&block)
+	if result.Error != nil {
+		t.Errorf("Block was not created in database: %v", result.Error)
+	}
+
+	if block.Type != "text" {
+		t.Errorf("Expected block type 'text', got %s", block.Type)
+	}
+
+	if block.Order != 0 {
+		t.Errorf("Expected block order 0, got %d", block.Order)
+	}
+
+	if block.Data != `{"content":""}` {
+		t.Errorf("Expected block data '{\"content\":\"\"}', got %s", block.Data)
+	}
+}
+
+func TestCreateBlockHandler_InvalidPageID(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create POST request with invalid page ID
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("type", "text")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/invalid/blocks", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{{Key: "page_id", Value: "invalid"}}
+	c.Set("site", site)
+
+	// Execute
+	CreateBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Invalid page ID" {
+		t.Errorf("Expected 'Invalid page ID', got %s", w.Body.String())
+	}
+}
+
+func TestCreateBlockHandler_PageNotFound(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create POST request for non-existent page
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("type", "text")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/999/blocks", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{{Key: "page_id", Value: "999"}}
+	c.Set("site", site)
+
+	// Execute
+	CreateBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status 404, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Page not found" {
+		t.Errorf("Expected 'Page not found', got %s", w.Body.String())
+	}
+}
+
+func TestCreateBlockHandler_PageFromDifferentSite(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create two test sites
+	site1 := &models.Site{
+		ID:        1,
+		Subdomain: "site1",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site1",
+	}
+	testDB.Create(site1)
+
+	site2 := &models.Site{
+		ID:        2,
+		Subdomain: "site2",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site2",
+	}
+	testDB.Create(site2)
+
+	// Create page for site1
+	page := &models.Page{
+		SiteID:    site1.ID,
+		Slug:      "/",
+		Title:     "Site1 Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Try to create block from site2
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("type", "text")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Set("site", site2) // Different site!
+
+	// Execute
+	CreateBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Access denied" {
+		t.Errorf("Expected 'Access denied', got %s", w.Body.String())
+	}
+
+	// Verify no block was created
+	var count int64
+	testDB.Model(&models.Block{}).Count(&count)
+	if count != 0 {
+		t.Errorf("Expected 0 blocks to be created, got %d", count)
+	}
+}
+
+func TestCreateBlockHandler_OrderCalculation(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Test 1: First block should have order 0
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("type", "text")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Set("site", site)
+
+	CreateBlockHandler(c)
+
+	var firstBlock models.Block
+	testDB.Where("page_id = ?", 1).Order("id ASC").First(&firstBlock)
+	if firstBlock.Order != 0 {
+		t.Errorf("First block should have order 0, got %d", firstBlock.Order)
+	}
+
+	// Test 2: Second block should have order 1
+	w2 := httptest.NewRecorder()
+	c2, _ := gin.CreateTestContext(w2)
+
+	form2 := url.Values{}
+	form2.Add("type", "text")
+
+	c2.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form2.Encode()))
+	c2.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c2.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c2.Set("site", site)
+
+	CreateBlockHandler(c2)
+
+	var secondBlock models.Block
+	testDB.Where("page_id = ?", 1).Order("id DESC").First(&secondBlock)
+	if secondBlock.Order != 1 {
+		t.Errorf("Second block should have order 1, got %d", secondBlock.Order)
+	}
+
+	// Test 3: Third block should have order 2
+	w3 := httptest.NewRecorder()
+	c3, _ := gin.CreateTestContext(w3)
+
+	form3 := url.Values{}
+	form3.Add("type", "text")
+
+	c3.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form3.Encode()))
+	c3.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c3.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c3.Set("site", site)
+
+	CreateBlockHandler(c3)
+
+	var thirdBlock models.Block
+	testDB.Where("page_id = ?", 1).Order("id DESC").First(&thirdBlock)
+	if thirdBlock.Order != 2 {
+		t.Errorf("Third block should have order 2, got %d", thirdBlock.Order)
+	}
+
+	// Verify all three blocks exist
+	var allBlocks []models.Block
+	testDB.Where("page_id = ?", 1).Order("\"order\" ASC").Find(&allBlocks)
+	if len(allBlocks) != 3 {
+		t.Errorf("Expected 3 blocks, got %d", len(allBlocks))
+	}
+
+	// Verify orders are sequential
+	for i, block := range allBlocks {
+		if block.Order != i {
+			t.Errorf("Block at index %d should have order %d, got %d", i, i, block.Order)
+		}
+	}
+}
+
+func TestCreateBlockHandler_InvalidBlockType(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create POST request with invalid block type
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("type", "invalid")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Set("site", site)
+
+	// Execute
+	CreateBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Invalid block type" {
+		t.Errorf("Expected 'Invalid block type', got %s", w.Body.String())
+	}
+
+	// Verify no block was created
+	var count int64
+	testDB.Model(&models.Block{}).Count(&count)
+	if count != 0 {
+		t.Errorf("Expected 0 blocks to be created, got %d", count)
+	}
+}

@@ -87,6 +87,7 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.GET("/dashboard", handlers.DashboardHandler)
 					adminGroup.POST("/pages", handlers.CreatePageHandler)
 					adminGroup.GET("/pages/:id/edit", handlers.EditPageHandler)
+					adminGroup.POST("/pages/:page_id/blocks", handlers.CreateBlockHandler)
 				}
 			}
 		}
