@@ -69,6 +69,12 @@ func setDefaults() {
 	v.SetDefault("auth.jwt_secret", "CHANGE_ME_IN_PRODUCTION_USE_ENV_VAR")
 	v.SetDefault("auth.jwt_expiry_hours", 8)
 	v.SetDefault("auth.bcrypt_cost", 12)
+
+	// TLS defaults
+	v.SetDefault("server.tls_enabled", false)
+	v.SetDefault("tls.email", "")
+	v.SetDefault("tls.cert_dir", "/var/lib/stinkykitty/certs")
+	v.SetDefault("tls.staging", false)
 }
 
 // GetString returns a config value as string
