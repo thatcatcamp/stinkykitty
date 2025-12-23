@@ -85,6 +85,7 @@ var serverStartCmd = &cobra.Command{
 				adminGroup.Use(auth.RequireAuth())
 				{
 					adminGroup.GET("/dashboard", handlers.DashboardHandler)
+					adminGroup.POST("/pages", handlers.CreatePageHandler)
 				}
 			}
 		}
