@@ -90,12 +90,12 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/pages/:id", handlers.UpdatePageHandler)
 					adminGroup.POST("/pages/:id/publish", handlers.PublishPageHandler)
 					adminGroup.POST("/pages/:id/unpublish", handlers.UnpublishPageHandler)
-					adminGroup.POST("/pages/:page_id/blocks", handlers.CreateBlockHandler)
-					adminGroup.GET("/pages/:page_id/blocks/:id/edit", handlers.EditBlockHandler)
-					adminGroup.POST("/pages/:page_id/blocks/:id", handlers.UpdateBlockHandler)
-					adminGroup.POST("/pages/:page_id/blocks/:id/delete", handlers.DeleteBlockHandler)
-					adminGroup.POST("/pages/:page_id/blocks/:id/move-up", handlers.MoveBlockUpHandler)
-					adminGroup.POST("/pages/:page_id/blocks/:id/move-down", handlers.MoveBlockDownHandler)
+					adminGroup.POST("/pages/:id/blocks", handlers.CreateBlockHandler)
+					adminGroup.GET("/pages/:id/blocks/:block_id/edit", handlers.EditBlockHandler)
+					adminGroup.POST("/pages/:id/blocks/:block_id", handlers.UpdateBlockHandler)
+					adminGroup.POST("/pages/:id/blocks/:block_id/delete", handlers.DeleteBlockHandler)
+					adminGroup.POST("/pages/:id/blocks/:block_id/move-up", handlers.MoveBlockUpHandler)
+					adminGroup.POST("/pages/:id/blocks/:block_id/move-down", handlers.MoveBlockDownHandler)
 				}
 			}
 		}

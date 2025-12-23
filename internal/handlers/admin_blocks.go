@@ -22,7 +22,7 @@ func CreateBlockHandler(c *gin.Context) {
 	site := siteVal.(*models.Site)
 
 	// Get page ID from URL parameter
-	pageIDStr := c.Param("page_id")
+	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid page ID")
@@ -93,14 +93,14 @@ func EditBlockHandler(c *gin.Context) {
 	site := siteVal.(*models.Site)
 
 	// Get page ID and block ID from URL parameters
-	pageIDStr := c.Param("page_id")
+	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid page ID")
 		return
 	}
 
-	blockIDStr := c.Param("id")
+	blockIDStr := c.Param("block_id")
 	blockID, err := strconv.Atoi(blockIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid block ID")
@@ -246,14 +246,14 @@ func UpdateBlockHandler(c *gin.Context) {
 	site := siteVal.(*models.Site)
 
 	// Get page ID and block ID from URL parameters
-	pageIDStr := c.Param("page_id")
+	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid page ID")
 		return
 	}
 
-	blockIDStr := c.Param("id")
+	blockIDStr := c.Param("block_id")
 	blockID, err := strconv.Atoi(blockIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid block ID")
@@ -319,14 +319,14 @@ func DeleteBlockHandler(c *gin.Context) {
 	site := siteVal.(*models.Site)
 
 	// Get page ID and block ID from URL parameters
-	pageIDStr := c.Param("page_id")
+	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid page ID")
 		return
 	}
 
-	blockIDStr := c.Param("id")
+	blockIDStr := c.Param("block_id")
 	blockID, err := strconv.Atoi(blockIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid block ID")
@@ -376,14 +376,14 @@ func MoveBlockUpHandler(c *gin.Context) {
 	site := siteVal.(*models.Site)
 
 	// Get page ID and block ID from URL parameters
-	pageIDStr := c.Param("page_id")
+	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid page ID")
 		return
 	}
 
-	blockIDStr := c.Param("id")
+	blockIDStr := c.Param("block_id")
 	blockID, err := strconv.Atoi(blockIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid block ID")
@@ -457,14 +457,14 @@ func MoveBlockDownHandler(c *gin.Context) {
 	site := siteVal.(*models.Site)
 
 	// Get page ID and block ID from URL parameters
-	pageIDStr := c.Param("page_id")
+	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid page ID")
 		return
 	}
 
-	blockIDStr := c.Param("id")
+	blockIDStr := c.Param("block_id")
 	blockID, err := strconv.Atoi(blockIDStr)
 	if err != nil {
 		c.String(http.StatusBadRequest, "Invalid block ID")
