@@ -45,7 +45,7 @@ func TestCreateBlockHandler_Success(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 	c.Set("site", site)
 
 	// Execute
@@ -105,7 +105,7 @@ func TestCreateBlockHandler_InvalidPageID(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/invalid/blocks", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c.Params = gin.Params{{Key: "page_id", Value: "invalid"}}
+	c.Params = gin.Params{{Key: "id", Value: "invalid"}}
 	c.Set("site", site)
 
 	// Execute
@@ -145,7 +145,7 @@ func TestCreateBlockHandler_PageNotFound(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/999/blocks", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c.Params = gin.Params{{Key: "page_id", Value: "999"}}
+	c.Params = gin.Params{{Key: "id", Value: "999"}}
 	c.Set("site", site)
 
 	// Execute
@@ -202,7 +202,7 @@ func TestCreateBlockHandler_PageFromDifferentSite(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 	c.Set("site", site2) // Different site!
 
 	// Execute
@@ -258,7 +258,7 @@ func TestCreateBlockHandler_OrderCalculation(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 	c.Set("site", site)
 
 	CreateBlockHandler(c)
@@ -278,7 +278,7 @@ func TestCreateBlockHandler_OrderCalculation(t *testing.T) {
 
 	c2.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form2.Encode()))
 	c2.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c2.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c2.Params = gin.Params{{Key: "id", Value: "1"}}
 	c2.Set("site", site)
 
 	CreateBlockHandler(c2)
@@ -298,7 +298,7 @@ func TestCreateBlockHandler_OrderCalculation(t *testing.T) {
 
 	c3.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form3.Encode()))
 	c3.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c3.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c3.Params = gin.Params{{Key: "id", Value: "1"}}
 	c3.Set("site", site)
 
 	CreateBlockHandler(c3)
@@ -357,7 +357,7 @@ func TestCreateBlockHandler_InvalidBlockType(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	c.Params = gin.Params{{Key: "page_id", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 	c.Set("site", site)
 
 	// Execute
@@ -419,8 +419,8 @@ func TestEditBlockHandler_Success(t *testing.T) {
 
 	c.Request = httptest.NewRequest("GET", "/admin/pages/1/blocks/1/edit", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
 
@@ -477,8 +477,8 @@ func TestEditBlockHandler_BlockNotFound(t *testing.T) {
 
 	c.Request = httptest.NewRequest("GET", "/admin/pages/1/blocks/999/edit", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "999"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "999"},
 	}
 	c.Set("site", site)
 
@@ -542,8 +542,8 @@ func TestEditBlockHandler_SecurityCheck(t *testing.T) {
 
 	c.Request = httptest.NewRequest("GET", "/admin/pages/1/blocks/1/edit", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site2) // Different site!
 
@@ -603,8 +603,8 @@ func TestUpdateBlockHandler_Success(t *testing.T) {
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
 
@@ -676,8 +676,8 @@ func TestUpdateBlockHandler_EmptyContent(t *testing.T) {
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
 
@@ -752,8 +752,8 @@ func TestUpdateBlockHandler_SecurityCheck(t *testing.T) {
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1", strings.NewReader(form.Encode()))
 	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site2) // Different site!
 
@@ -827,8 +827,8 @@ func TestDeleteBlockHandler_Success(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/delete", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
 
@@ -890,8 +890,8 @@ func TestDeleteBlockHandler_BlockNotFound(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/999/delete", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "999"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "999"},
 	}
 	c.Set("site", site)
 
@@ -955,8 +955,8 @@ func TestDeleteBlockHandler_SecurityCheck(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/delete", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site2) // Different site!
 
@@ -1005,8 +1005,8 @@ func TestDeleteBlockHandler_InvalidPageID(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/invalid/blocks/1/delete", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "invalid"},
-		{Key: "id", Value: "1"},
+		{Key: "id", Value: "invalid"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
 
@@ -1053,8 +1053,8 @@ func TestDeleteBlockHandler_InvalidBlockID(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/invalid/delete", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "invalid"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "invalid"},
 	}
 	c.Set("site", site)
 
@@ -1126,8 +1126,8 @@ func TestMoveBlockUpHandler_Success(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-up", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "2"},
 	}
 	c.Set("site", site)
 
@@ -1211,8 +1211,8 @@ func TestMoveBlockUpHandler_FirstBlock(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/move-up", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
 
@@ -1293,8 +1293,8 @@ func TestMoveBlockUpHandler_SecurityCheck(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-up", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "2"},
 	}
 	c.Set("site", site2) // Different site!
 
@@ -1379,8 +1379,8 @@ func TestMoveBlockDownHandler_Success(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-down", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "2"},
 	}
 	c.Set("site", site)
 
@@ -1464,8 +1464,8 @@ func TestMoveBlockDownHandler_LastBlock(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-down", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
-		{Key: "id", Value: "2"},
+		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "2"},
 	}
 	c.Set("site", site)
 
@@ -1546,8 +1546,8 @@ func TestMoveBlockDownHandler_SecurityCheck(t *testing.T) {
 
 	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/move-down", nil)
 	c.Params = gin.Params{
-		{Key: "page_id", Value: "1"},
 		{Key: "id", Value: "1"},
+		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site2) // Different site!
 
