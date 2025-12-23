@@ -10,6 +10,138 @@ import (
 	"gorm.io/gorm"
 )
 
+// NewPageFormHandler shows the form to create a new page
+func NewPageFormHandler(c *gin.Context) {
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Create New Page</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 28px;
+            color: #333;
+        }
+        .back-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        form {
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        button[type="submit"] {
+            background: #007bff;
+            color: white;
+        }
+        button[type="submit"]:hover {
+            background: #0056b3;
+        }
+        a.cancel {
+            padding: 10px 20px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        a.cancel:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin/dashboard" class="back-link">← Back to Dashboard</a>
+
+        <h1>Create New Page</h1>
+
+        <form method="POST" action="/admin/pages">
+            <div class="form-group">
+                <label for="slug">Slug:</label>
+                <input type="text" id="slug" name="slug" required placeholder="/about">
+                <div class="help-text">The URL path for this page (e.g., /about, /contact)</div>
+            </div>
+
+            <div class="form-group">
+                <label for="title">Title:</label>
+                <input type="text" id="title" name="title" required placeholder="About Us">
+                <div class="help-text">The page title that will appear in the editor and browser tab</div>
+            </div>
+
+            <div class="button-group">
+                <button type="submit">Create Page</button>
+                <a href="/admin/dashboard" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
 // CreatePageHandler creates a new page
 func CreatePageHandler(c *gin.Context) {
 	siteVal, _ := c.Get("site")
