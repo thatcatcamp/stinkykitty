@@ -780,3 +780,293 @@ func TestUpdateBlockHandler_SecurityCheck(t *testing.T) {
 		t.Errorf("Block should not have been updated, got %s", unchangedBlock.Data)
 	}
 }
+
+func TestDeleteBlockHandler_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block to delete
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Content to delete"}`,
+	}
+	testDB.Create(block)
+
+	// Verify block exists
+	var countBefore int64
+	testDB.Model(&models.Block{}).Where("page_id = ?", page.ID).Count(&countBefore)
+	if countBefore != 1 {
+		t.Errorf("Expected 1 block before deletion, got %d", countBefore)
+	}
+
+	// Create POST request to delete
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/delete", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	DeleteBlockHandler(c)
+
+	// Assert redirect
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d. Body: %s", c.Writer.Status(), w.Body.String())
+	}
+
+	location := w.Header().Get("Location")
+	if location != "/admin/pages/1/edit" {
+		t.Errorf("Expected redirect to /admin/pages/1/edit, got %s", location)
+	}
+
+	// Verify block was deleted from database
+	var countAfter int64
+	testDB.Model(&models.Block{}).Where("page_id = ?", page.ID).Count(&countAfter)
+	if countAfter != 0 {
+		t.Errorf("Expected 0 blocks after deletion, got %d", countAfter)
+	}
+
+	// Verify block cannot be found
+	var deletedBlock models.Block
+	result := testDB.Where("id = ?", block.ID).First(&deletedBlock)
+	if result.Error == nil {
+		t.Errorf("Block should not be found after deletion, but it was")
+	}
+}
+
+func TestDeleteBlockHandler_BlockNotFound(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Try to delete non-existent block
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/999/delete", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "999"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	DeleteBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status 404, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Block not found" {
+		t.Errorf("Expected 'Block not found', got %s", w.Body.String())
+	}
+}
+
+func TestDeleteBlockHandler_SecurityCheck(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create two test sites
+	site1 := &models.Site{
+		ID:        1,
+		Subdomain: "site1",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site1",
+	}
+	testDB.Create(site1)
+
+	site2 := &models.Site{
+		ID:        2,
+		Subdomain: "site2",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site2",
+	}
+	testDB.Create(site2)
+
+	// Create page for site1
+	page := &models.Page{
+		SiteID:    site1.ID,
+		Slug:      "/",
+		Title:     "Site1 Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block for site1
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Protected content"}`,
+	}
+	testDB.Create(block)
+
+	// Try to delete block from site2
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/delete", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site2) // Different site!
+
+	// Execute
+	DeleteBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Access denied" {
+		t.Errorf("Expected 'Access denied', got %s", w.Body.String())
+	}
+
+	// Verify block was NOT deleted
+	var stillExists models.Block
+	result := testDB.Where("id = ?", block.ID).First(&stillExists)
+	if result.Error != nil {
+		t.Errorf("Block should still exist after failed deletion attempt, but got error: %v", result.Error)
+	}
+
+	if stillExists.Data != `{"content":"Protected content"}` {
+		t.Errorf("Block data should be unchanged, got %s", stillExists.Data)
+	}
+}
+
+func TestDeleteBlockHandler_InvalidPageID(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Try to delete with invalid page ID
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/invalid/blocks/1/delete", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "invalid"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	DeleteBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Invalid page ID" {
+		t.Errorf("Expected 'Invalid page ID', got %s", w.Body.String())
+	}
+}
+
+func TestDeleteBlockHandler_InvalidBlockID(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Try to delete with invalid block ID
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/invalid/delete", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "invalid"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	DeleteBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Invalid block ID" {
+		t.Errorf("Expected 'Invalid block ID', got %s", w.Body.String())
+	}
+}

@@ -307,3 +307,60 @@ func UpdateBlockHandler(c *gin.Context) {
 	// Redirect back to page editor
 	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
 }
+
+// DeleteBlockHandler deletes a block from a page
+func DeleteBlockHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID and block ID from URL parameters
+	pageIDStr := c.Param("page_id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	blockIDStr := c.Param("id")
+	blockID, err := strconv.Atoi(blockIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid block ID")
+		return
+	}
+
+	// Load the block
+	var block models.Block
+	result := db.GetDB().Where("id = ? AND page_id = ?", blockID, pageID).First(&block)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Block not found")
+		return
+	}
+
+	// Load the page to verify ownership
+	var page models.Page
+	result = db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Delete the block from database
+	if err := db.GetDB().Delete(&block).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to delete block")
+		return
+	}
+
+	// Redirect back to page editor
+	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+}

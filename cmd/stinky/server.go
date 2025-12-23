@@ -90,6 +90,7 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/pages/:page_id/blocks", handlers.CreateBlockHandler)
 					adminGroup.GET("/pages/:page_id/blocks/:id/edit", handlers.EditBlockHandler)
 					adminGroup.POST("/pages/:page_id/blocks/:id", handlers.UpdateBlockHandler)
+					adminGroup.POST("/pages/:page_id/blocks/:id/delete", handlers.DeleteBlockHandler)
 				}
 			}
 		}
