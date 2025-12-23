@@ -379,3 +379,404 @@ func TestCreateBlockHandler_InvalidBlockType(t *testing.T) {
 		t.Errorf("Expected 0 blocks to be created, got %d", count)
 	}
 }
+
+func TestEditBlockHandler_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block with content
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Hello, World!"}`,
+	}
+	testDB.Create(block)
+
+	// Create GET request
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("GET", "/admin/pages/1/blocks/1/edit", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	EditBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
+	}
+
+	// Check that form is rendered with content
+	body := w.Body.String()
+	if !strings.Contains(body, "Edit Text Block") {
+		t.Errorf("Expected 'Edit Text Block' in response, got %s", body)
+	}
+
+	if !strings.Contains(body, "Hello, World!") {
+		t.Errorf("Expected 'Hello, World!' in response, got %s", body)
+	}
+
+	if !strings.Contains(body, `action="/admin/pages/1/blocks/1"`) {
+		t.Errorf("Expected form action to be /admin/pages/1/blocks/1, got %s", body)
+	}
+}
+
+func TestEditBlockHandler_BlockNotFound(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create GET request for non-existent block
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("GET", "/admin/pages/1/blocks/999/edit", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "999"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	EditBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Expected status 404, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Block not found" {
+		t.Errorf("Expected 'Block not found', got %s", w.Body.String())
+	}
+}
+
+func TestEditBlockHandler_SecurityCheck(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create two test sites
+	site1 := &models.Site{
+		ID:        1,
+		Subdomain: "site1",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site1",
+	}
+	testDB.Create(site1)
+
+	site2 := &models.Site{
+		ID:        2,
+		Subdomain: "site2",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site2",
+	}
+	testDB.Create(site2)
+
+	// Create page for site1
+	page := &models.Page{
+		SiteID:    site1.ID,
+		Slug:      "/",
+		Title:     "Site1 Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block for site1
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Secret content"}`,
+	}
+	testDB.Create(block)
+
+	// Try to edit block from site2
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("GET", "/admin/pages/1/blocks/1/edit", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site2) // Different site!
+
+	// Execute
+	EditBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Access denied" {
+		t.Errorf("Expected 'Access denied', got %s", w.Body.String())
+	}
+}
+
+func TestUpdateBlockHandler_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block with content
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Old content"}`,
+	}
+	testDB.Create(block)
+
+	// Create POST request with new content
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("content", "New content here!")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	UpdateBlockHandler(c)
+
+	// Assert redirect
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d", c.Writer.Status())
+	}
+
+	location := w.Header().Get("Location")
+	if location != "/admin/pages/1/edit" {
+		t.Errorf("Expected redirect to /admin/pages/1/edit, got %s", location)
+	}
+
+	// Verify block was updated in database
+	var updatedBlock models.Block
+	result := testDB.Where("id = ?", 1).First(&updatedBlock)
+	if result.Error != nil {
+		t.Errorf("Failed to load updated block: %v", result.Error)
+	}
+
+	if updatedBlock.Data != `{"content":"New content here!"}` {
+		t.Errorf("Expected block data to be '{\"content\":\"New content here!\"}', got %s", updatedBlock.Data)
+	}
+}
+
+func TestUpdateBlockHandler_EmptyContent(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block with content
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Old content"}`,
+	}
+	testDB.Create(block)
+
+	// Create POST request with empty content
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("content", "")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	UpdateBlockHandler(c)
+
+	// Assert redirect (should still succeed)
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d", c.Writer.Status())
+	}
+
+	// Verify block was updated with empty content
+	var updatedBlock models.Block
+	result := testDB.Where("id = ?", 1).First(&updatedBlock)
+	if result.Error != nil {
+		t.Errorf("Failed to load updated block: %v", result.Error)
+	}
+
+	if updatedBlock.Data != `{"content":""}` {
+		t.Errorf("Expected block data to be '{\"content\":\"\"}', got %s", updatedBlock.Data)
+	}
+}
+
+func TestUpdateBlockHandler_SecurityCheck(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create two test sites
+	site1 := &models.Site{
+		ID:        1,
+		Subdomain: "site1",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site1",
+	}
+	testDB.Create(site1)
+
+	site2 := &models.Site{
+		ID:        2,
+		Subdomain: "site2",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site2",
+	}
+	testDB.Create(site2)
+
+	// Create page for site1
+	page := &models.Page{
+		SiteID:    site1.ID,
+		Slug:      "/",
+		Title:     "Site1 Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create block for site1
+	block := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Original content"}`,
+	}
+	testDB.Create(block)
+
+	// Try to update block from site2
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("content", "Hacked content!")
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site2) // Different site!
+
+	// Execute
+	UpdateBlockHandler(c)
+
+	// Assert
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Access denied" {
+		t.Errorf("Expected 'Access denied', got %s", w.Body.String())
+	}
+
+	// Verify block was NOT updated
+	var unchangedBlock models.Block
+	result := testDB.Where("id = ?", 1).First(&unchangedBlock)
+	if result.Error != nil {
+		t.Errorf("Failed to load block: %v", result.Error)
+	}
+
+	if unchangedBlock.Data != `{"content":"Original content"}` {
+		t.Errorf("Block should not have been updated, got %s", unchangedBlock.Data)
+	}
+}
