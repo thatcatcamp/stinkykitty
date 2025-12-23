@@ -45,6 +45,17 @@ func CreateSite(db *gorm.DB, subdomain string, ownerID uint, sitesDir string) (*
 		return nil, fmt.Errorf("failed to add owner to site: %w", err)
 	}
 
+	// Auto-create homepage for new site
+	homepage := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     subdomain,
+		Published: false,
+	}
+	if err := db.Create(homepage).Error; err != nil {
+		return nil, fmt.Errorf("failed to create homepage: %w", err)
+	}
+
 	return site, nil
 }
 
