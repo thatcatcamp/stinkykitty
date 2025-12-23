@@ -106,8 +106,8 @@ func ServePage(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
-	// Get slug from URL path
-	slug := c.Param("slug")
+	// Get slug from URL path (e.g., "/about")
+	slug := c.Request.URL.Path
 
 	// Load page by slug
 	var page models.Page
