@@ -221,3 +221,139 @@ func EditPageHandler(c *gin.Context) {
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
+
+// UpdatePageHandler updates page title (Save Draft)
+func UpdatePageHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID from URL
+	pageIDStr := c.Param("id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	// Load page from database
+	var page models.Page
+	result := db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Get title from form
+	title := c.PostForm("title")
+	if title == "" {
+		c.String(http.StatusBadRequest, "Title is required")
+		return
+	}
+
+	// Update page title (keeps Published unchanged - this is "Save Draft")
+	page.Title = title
+	if err := db.GetDB().Save(&page).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to update page")
+		return
+	}
+
+	// Redirect back to page editor
+	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+}
+
+// PublishPageHandler publishes a page
+func PublishPageHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID from URL
+	pageIDStr := c.Param("id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	// Load page from database
+	var page models.Page
+	result := db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Set page.Published = true
+	page.Published = true
+	if err := db.GetDB().Save(&page).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to publish page")
+		return
+	}
+
+	// Redirect back to page editor
+	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+}
+
+// UnpublishPageHandler unpublishes a page
+func UnpublishPageHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID from URL
+	pageIDStr := c.Param("id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	// Load page from database
+	var page models.Page
+	result := db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Set page.Published = false
+	page.Published = false
+	if err := db.GetDB().Save(&page).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to unpublish page")
+		return
+	}
+
+	// Redirect back to page editor
+	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+}
