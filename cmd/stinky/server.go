@@ -91,6 +91,8 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.GET("/pages/:page_id/blocks/:id/edit", handlers.EditBlockHandler)
 					adminGroup.POST("/pages/:page_id/blocks/:id", handlers.UpdateBlockHandler)
 					adminGroup.POST("/pages/:page_id/blocks/:id/delete", handlers.DeleteBlockHandler)
+					adminGroup.POST("/pages/:page_id/blocks/:id/move-up", handlers.MoveBlockUpHandler)
+					adminGroup.POST("/pages/:page_id/blocks/:id/move-down", handlers.MoveBlockDownHandler)
 				}
 			}
 		}

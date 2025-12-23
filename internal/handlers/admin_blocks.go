@@ -364,3 +364,165 @@ func DeleteBlockHandler(c *gin.Context) {
 	// Redirect back to page editor
 	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
 }
+
+// MoveBlockUpHandler moves a block up in the order (swaps with previous block)
+func MoveBlockUpHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID and block ID from URL parameters
+	pageIDStr := c.Param("page_id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	blockIDStr := c.Param("id")
+	blockID, err := strconv.Atoi(blockIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid block ID")
+		return
+	}
+
+	// Load the block
+	var block models.Block
+	result := db.GetDB().Where("id = ? AND page_id = ?", blockID, pageID).First(&block)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Block not found")
+		return
+	}
+
+	// Load the page to verify ownership
+	var page models.Page
+	result = db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Find the previous block (where order < current.Order, ordered DESC, limit 1)
+	var previousBlock models.Block
+	result = db.GetDB().Where("page_id = ? AND \"order\" < ?", pageID, block.Order).
+		Order("\"order\" DESC").
+		First(&previousBlock)
+
+	// If no previous block found, this is already the first block - do nothing
+	if result.Error != nil {
+		c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+		return
+	}
+
+	// Swap the order values
+	currentOrder := block.Order
+	previousOrder := previousBlock.Order
+
+	block.Order = previousOrder
+	previousBlock.Order = currentOrder
+
+	// Save both blocks
+	if err := db.GetDB().Save(&block).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to update block order")
+		return
+	}
+
+	if err := db.GetDB().Save(&previousBlock).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to update block order")
+		return
+	}
+
+	// Redirect back to page editor
+	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+}
+
+// MoveBlockDownHandler moves a block down in the order (swaps with next block)
+func MoveBlockDownHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID and block ID from URL parameters
+	pageIDStr := c.Param("page_id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	blockIDStr := c.Param("id")
+	blockID, err := strconv.Atoi(blockIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid block ID")
+		return
+	}
+
+	// Load the block
+	var block models.Block
+	result := db.GetDB().Where("id = ? AND page_id = ?", blockID, pageID).First(&block)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Block not found")
+		return
+	}
+
+	// Load the page to verify ownership
+	var page models.Page
+	result = db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Find the next block (where order > current.Order, ordered ASC, limit 1)
+	var nextBlock models.Block
+	result = db.GetDB().Where("page_id = ? AND \"order\" > ?", pageID, block.Order).
+		Order("\"order\" ASC").
+		First(&nextBlock)
+
+	// If no next block found, this is already the last block - do nothing
+	if result.Error != nil {
+		c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+		return
+	}
+
+	// Swap the order values
+	currentOrder := block.Order
+	nextOrder := nextBlock.Order
+
+	block.Order = nextOrder
+	nextBlock.Order = currentOrder
+
+	// Save both blocks
+	if err := db.GetDB().Save(&block).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to update block order")
+		return
+	}
+
+	if err := db.GetDB().Save(&nextBlock).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to update block order")
+		return
+	}
+
+	// Redirect back to page editor
+	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+}

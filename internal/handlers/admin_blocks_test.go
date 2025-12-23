@@ -1070,3 +1070,509 @@ func TestDeleteBlockHandler_InvalidBlockID(t *testing.T) {
 		t.Errorf("Expected 'Invalid block ID', got %s", w.Body.String())
 	}
 }
+
+func TestMoveBlockUpHandler_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create three blocks
+	block1 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Block 1"}`,
+	}
+	testDB.Create(block1)
+
+	block2 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  1,
+		Data:   `{"content":"Block 2"}`,
+	}
+	testDB.Create(block2)
+
+	block3 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  2,
+		Data:   `{"content":"Block 3"}`,
+	}
+	testDB.Create(block3)
+
+	// Move block2 (order 1) up - should swap with block1 (order 0)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-up", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "2"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	MoveBlockUpHandler(c)
+
+	// Assert redirect
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d. Body: %s", c.Writer.Status(), w.Body.String())
+	}
+
+	location := w.Header().Get("Location")
+	if location != "/admin/pages/1/edit" {
+		t.Errorf("Expected redirect to /admin/pages/1/edit, got %s", location)
+	}
+
+	// Verify order swap occurred
+	var updatedBlock1 models.Block
+	testDB.Where("id = ?", block1.ID).First(&updatedBlock1)
+	if updatedBlock1.Order != 1 {
+		t.Errorf("Block 1 should now have order 1, got %d", updatedBlock1.Order)
+	}
+
+	var updatedBlock2 models.Block
+	testDB.Where("id = ?", block2.ID).First(&updatedBlock2)
+	if updatedBlock2.Order != 0 {
+		t.Errorf("Block 2 should now have order 0, got %d", updatedBlock2.Order)
+	}
+
+	var updatedBlock3 models.Block
+	testDB.Where("id = ?", block3.ID).First(&updatedBlock3)
+	if updatedBlock3.Order != 2 {
+		t.Errorf("Block 3 should still have order 2, got %d", updatedBlock3.Order)
+	}
+}
+
+func TestMoveBlockUpHandler_FirstBlock(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create two blocks
+	block1 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Block 1"}`,
+	}
+	testDB.Create(block1)
+
+	block2 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  1,
+		Data:   `{"content":"Block 2"}`,
+	}
+	testDB.Create(block2)
+
+	// Try to move block1 (order 0) up - should do nothing
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/move-up", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	MoveBlockUpHandler(c)
+
+	// Assert redirect (should still redirect without error)
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d. Body: %s", c.Writer.Status(), w.Body.String())
+	}
+
+	// Verify orders unchanged
+	var updatedBlock1 models.Block
+	testDB.Where("id = ?", block1.ID).First(&updatedBlock1)
+	if updatedBlock1.Order != 0 {
+		t.Errorf("Block 1 should still have order 0, got %d", updatedBlock1.Order)
+	}
+
+	var updatedBlock2 models.Block
+	testDB.Where("id = ?", block2.ID).First(&updatedBlock2)
+	if updatedBlock2.Order != 1 {
+		t.Errorf("Block 2 should still have order 1, got %d", updatedBlock2.Order)
+	}
+}
+
+func TestMoveBlockUpHandler_SecurityCheck(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create two test sites
+	site1 := &models.Site{
+		ID:        1,
+		Subdomain: "site1",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site1",
+	}
+	testDB.Create(site1)
+
+	site2 := &models.Site{
+		ID:        2,
+		Subdomain: "site2",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site2",
+	}
+	testDB.Create(site2)
+
+	// Create page for site1
+	page := &models.Page{
+		SiteID:    site1.ID,
+		Slug:      "/",
+		Title:     "Site1 Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create blocks for site1
+	block1 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Block 1"}`,
+	}
+	testDB.Create(block1)
+
+	block2 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  1,
+		Data:   `{"content":"Block 2"}`,
+	}
+	testDB.Create(block2)
+
+	// Try to move block from site2
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-up", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "2"},
+	}
+	c.Set("site", site2) // Different site!
+
+	// Execute
+	MoveBlockUpHandler(c)
+
+	// Assert
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Access denied" {
+		t.Errorf("Expected 'Access denied', got %s", w.Body.String())
+	}
+
+	// Verify orders unchanged
+	var unchangedBlock1 models.Block
+	testDB.Where("id = ?", block1.ID).First(&unchangedBlock1)
+	if unchangedBlock1.Order != 0 {
+		t.Errorf("Block 1 should still have order 0, got %d", unchangedBlock1.Order)
+	}
+
+	var unchangedBlock2 models.Block
+	testDB.Where("id = ?", block2.ID).First(&unchangedBlock2)
+	if unchangedBlock2.Order != 1 {
+		t.Errorf("Block 2 should still have order 1, got %d", unchangedBlock2.Order)
+	}
+}
+
+func TestMoveBlockDownHandler_Success(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create three blocks
+	block1 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Block 1"}`,
+	}
+	testDB.Create(block1)
+
+	block2 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  1,
+		Data:   `{"content":"Block 2"}`,
+	}
+	testDB.Create(block2)
+
+	block3 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  2,
+		Data:   `{"content":"Block 3"}`,
+	}
+	testDB.Create(block3)
+
+	// Move block2 (order 1) down - should swap with block3 (order 2)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-down", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "2"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	MoveBlockDownHandler(c)
+
+	// Assert redirect
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d. Body: %s", c.Writer.Status(), w.Body.String())
+	}
+
+	location := w.Header().Get("Location")
+	if location != "/admin/pages/1/edit" {
+		t.Errorf("Expected redirect to /admin/pages/1/edit, got %s", location)
+	}
+
+	// Verify order swap occurred
+	var updatedBlock1 models.Block
+	testDB.Where("id = ?", block1.ID).First(&updatedBlock1)
+	if updatedBlock1.Order != 0 {
+		t.Errorf("Block 1 should still have order 0, got %d", updatedBlock1.Order)
+	}
+
+	var updatedBlock2 models.Block
+	testDB.Where("id = ?", block2.ID).First(&updatedBlock2)
+	if updatedBlock2.Order != 2 {
+		t.Errorf("Block 2 should now have order 2, got %d", updatedBlock2.Order)
+	}
+
+	var updatedBlock3 models.Block
+	testDB.Where("id = ?", block3.ID).First(&updatedBlock3)
+	if updatedBlock3.Order != 1 {
+		t.Errorf("Block 3 should now have order 1, got %d", updatedBlock3.Order)
+	}
+}
+
+func TestMoveBlockDownHandler_LastBlock(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create test site
+	site := &models.Site{
+		ID:        1,
+		Subdomain: "test",
+		OwnerID:   1,
+		SiteDir:   "/tmp/test",
+	}
+	testDB.Create(site)
+
+	// Create page
+	page := &models.Page{
+		SiteID:    site.ID,
+		Slug:      "/",
+		Title:     "Test Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create two blocks
+	block1 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Block 1"}`,
+	}
+	testDB.Create(block1)
+
+	block2 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  1,
+		Data:   `{"content":"Block 2"}`,
+	}
+	testDB.Create(block2)
+
+	// Try to move block2 (order 1) down - should do nothing
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/2/move-down", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "2"},
+	}
+	c.Set("site", site)
+
+	// Execute
+	MoveBlockDownHandler(c)
+
+	// Assert redirect (should still redirect without error)
+	if c.Writer.Status() != http.StatusFound {
+		t.Errorf("Expected status 302, got %d. Body: %s", c.Writer.Status(), w.Body.String())
+	}
+
+	// Verify orders unchanged
+	var updatedBlock1 models.Block
+	testDB.Where("id = ?", block1.ID).First(&updatedBlock1)
+	if updatedBlock1.Order != 0 {
+		t.Errorf("Block 1 should still have order 0, got %d", updatedBlock1.Order)
+	}
+
+	var updatedBlock2 models.Block
+	testDB.Where("id = ?", block2.ID).First(&updatedBlock2)
+	if updatedBlock2.Order != 1 {
+		t.Errorf("Block 2 should still have order 1, got %d", updatedBlock2.Order)
+	}
+}
+
+func TestMoveBlockDownHandler_SecurityCheck(t *testing.T) {
+	// Setup
+	gin.SetMode(gin.TestMode)
+	testDB := setupTestDB(t)
+	db.SetDB(testDB)
+
+	// Create two test sites
+	site1 := &models.Site{
+		ID:        1,
+		Subdomain: "site1",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site1",
+	}
+	testDB.Create(site1)
+
+	site2 := &models.Site{
+		ID:        2,
+		Subdomain: "site2",
+		OwnerID:   1,
+		SiteDir:   "/tmp/site2",
+	}
+	testDB.Create(site2)
+
+	// Create page for site1
+	page := &models.Page{
+		SiteID:    site1.ID,
+		Slug:      "/",
+		Title:     "Site1 Page",
+		Published: false,
+	}
+	testDB.Create(page)
+
+	// Create blocks for site1
+	block1 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  0,
+		Data:   `{"content":"Block 1"}`,
+	}
+	testDB.Create(block1)
+
+	block2 := &models.Block{
+		PageID: page.ID,
+		Type:   "text",
+		Order:  1,
+		Data:   `{"content":"Block 2"}`,
+	}
+	testDB.Create(block2)
+
+	// Try to move block from site2
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	c.Request = httptest.NewRequest("POST", "/admin/pages/1/blocks/1/move-down", nil)
+	c.Params = gin.Params{
+		{Key: "page_id", Value: "1"},
+		{Key: "id", Value: "1"},
+	}
+	c.Set("site", site2) // Different site!
+
+	// Execute
+	MoveBlockDownHandler(c)
+
+	// Assert
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403, got %d", w.Code)
+	}
+
+	if w.Body.String() != "Access denied" {
+		t.Errorf("Expected 'Access denied', got %s", w.Body.String())
+	}
+
+	// Verify orders unchanged
+	var unchangedBlock1 models.Block
+	testDB.Where("id = ?", block1.ID).First(&unchangedBlock1)
+	if unchangedBlock1.Order != 0 {
+		t.Errorf("Block 1 should still have order 0, got %d", unchangedBlock1.Order)
+	}
+
+	var unchangedBlock2 models.Block
+	testDB.Where("id = ?", block2.ID).First(&unchangedBlock2)
+	if unchangedBlock2.Order != 1 {
+		t.Errorf("Block 2 should still have order 1, got %d", unchangedBlock2.Order)
+	}
+}
