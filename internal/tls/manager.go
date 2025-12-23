@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -109,7 +110,7 @@ func (m *Manager) RefreshDomains() error {
 	}
 
 	// Tell certmagic to manage these domains
-	if err := m.certmagic.ManageAsync(m.db.Statement.Context, domains); err != nil {
+	if err := m.certmagic.ManageAsync(context.Background(), domains); err != nil {
 		return fmt.Errorf("failed to manage domains: %w", err)
 	}
 
