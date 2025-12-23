@@ -99,6 +99,9 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/pages/:id/blocks/:block_id/move-down", handlers.MoveBlockDownHandler)
 				}
 			}
+
+			// Wildcard route for all other pages (must be last)
+			siteGroup.GET("/*slug", handlers.ServePage)
 		}
 
 		httpPort := config.GetString("server.http_port")
