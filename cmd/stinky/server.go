@@ -94,6 +94,7 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/pages/:id", handlers.UpdatePageHandler)
 					adminGroup.POST("/pages/:id/publish", handlers.PublishPageHandler)
 					adminGroup.POST("/pages/:id/unpublish", handlers.UnpublishPageHandler)
+					adminGroup.POST("/pages/:id/delete", handlers.DeletePageHandler)
 					adminGroup.POST("/pages/:id/blocks", handlers.CreateBlockHandler)
 					adminGroup.GET("/pages/:id/blocks/:block_id/edit", handlers.EditBlockHandler)
 					adminGroup.POST("/pages/:id/blocks/:block_id", handlers.UpdateBlockHandler)

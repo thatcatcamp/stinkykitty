@@ -489,3 +489,51 @@ func UnpublishPageHandler(c *gin.Context) {
 	// Redirect back to page editor
 	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
 }
+
+// DeletePageHandler deletes a page
+func DeletePageHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID from URL
+	pageIDStr := c.Param("id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	// Load page from database
+	var page models.Page
+	result := db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	// Don't allow deleting homepage
+	if page.Slug == "/" {
+		c.String(http.StatusForbidden, "Cannot delete homepage")
+		return
+	}
+
+	// Delete the page (soft delete)
+	if err := db.GetDB().Delete(&page).Error; err != nil {
+		c.String(http.StatusInternalServerError, "Failed to delete page")
+		return
+	}
+
+	// Redirect back to dashboard
+	c.Redirect(http.StatusFound, "/admin/dashboard")
+}
