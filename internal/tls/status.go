@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -28,45 +29,54 @@ func (m *Manager) GetCertificateStatus() ([]CertificateStatus, error) {
 		return nil, fmt.Errorf("failed to get domains: %w", err)
 	}
 
-	// For each domain, check if certificate exists
-	for _, domain := range domains {
-		// Look for certificate file in cert storage
-		// Certmagic stores certs in: {certDir}/certificates/{ca}/{domain}/{domain}.crt
-		// Try both staging and production CA paths
-		certPath := ""
+	// Walk the certificates directory to find actual certificate files
+	certsBaseDir := filepath.Join(m.cfg.CertDir, "certificates")
 
-		// Try production CA first
-		prodPath := filepath.Join(m.cfg.CertDir, "certificates", "acme-v02.api.letsencrypt.org-directory", domain, domain+".crt")
-		if _, err := os.Stat(prodPath); err == nil {
-			certPath = prodPath
-		} else {
-			// Try staging CA
-			stagingPath := filepath.Join(m.cfg.CertDir, "certificates", "acme-staging-v02.api.letsencrypt.org-directory", domain, domain+".crt")
-			if _, err := os.Stat(stagingPath); err == nil {
-				certPath = stagingPath
+	for _, domain := range domains {
+		// Search for certificate file by walking the certificates directory
+		var certPath string
+
+		// Walk the certificates directory looking for this domain's cert
+		filepath.Walk(certsBaseDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
 			}
-		}
+
+			// Look for files named {domain}.crt
+			if filepath.Base(path) == domain+".crt" {
+				// Verify parent directory matches domain
+				parentDir := filepath.Base(filepath.Dir(path))
+				if parentDir == domain {
+					certPath = path
+					return filepath.SkipAll // Found it, stop walking
+				}
+			}
+			return nil
+		})
 
 		if certPath == "" {
-			// No certificate found for this domain (not yet provisioned)
+			// No certificate found for this domain
 			continue
 		}
 
 		// Read and parse certificate
 		certPEM, err := os.ReadFile(certPath)
 		if err != nil {
-			continue // Skip if can't read
+			log.Printf("Warning: Failed to read certificate for %s: %v", domain, err)
+			continue
 		}
 
-		// Parse PEM block
+		// Parse first PEM block (leaf certificate - Let's Encrypt places this first)
 		block, _ := pem.Decode(certPEM)
 		if block == nil {
-			continue // Not a valid PEM block
+			log.Printf("Warning: No PEM block found in certificate for %s", domain)
+			continue
 		}
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			continue // Skip if can't parse
+			log.Printf("Warning: Failed to parse certificate for %s: %v", domain, err)
+			continue
 		}
 
 		// Calculate days until expiry
