@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -128,13 +129,33 @@ var serverStartCmd = &cobra.Command{
 			// Start HTTP server (port 80) for ACME challenges + redirects
 			httpPort := config.GetString("server.http_port")
 			httpAddr := fmt.Sprintf(":%s", httpPort)
+
+			// Channel to signal HTTP server startup status
+			httpStarted := make(chan error, 1)
+
 			go func() {
-				fmt.Printf("Starting HTTP server on %s (ACME challenges + redirects)\n", httpAddr)
-				if err := http.ListenAndServe(httpAddr, r); err != nil {
+				// Create listener first to catch binding errors immediately
+				listener, err := net.Listen("tcp", httpAddr)
+				if err != nil {
+					httpStarted <- fmt.Errorf("failed to bind HTTP server to %s: %w", httpAddr, err)
+					return
+				}
+
+				httpStarted <- nil
+				fmt.Printf("HTTP server listening on %s (ACME challenges + redirects)\n", httpAddr)
+
+				if err := http.Serve(listener, r); err != nil {
 					fmt.Fprintf(os.Stderr, "HTTP server failed: %v\n", err)
 					os.Exit(1)
 				}
 			}()
+
+			// Wait for HTTP server to start (or fail)
+			if err := <-httpStarted; err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Hint: Port 80 typically requires root/sudo privileges\n")
+				os.Exit(1)
+			}
 
 			// Start HTTPS server (port 443) for main traffic
 			httpsPort := config.GetString("server.https_port")
