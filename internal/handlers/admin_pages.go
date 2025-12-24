@@ -331,10 +331,22 @@ func EditPageHandler(c *gin.Context) {
                 <div class="page-actions">
                     <button type="submit" class="btn">Save Draft</button>
                 </div>
-            </form>
+            </form>`
+
+	// Show Publish or Unpublish button based on current status
+	if page.Published {
+		html += `
+            <form method="POST" action="/admin/pages/` + pageIDStr + `/unpublish" style="display:inline;">
+                <button type="submit" class="btn btn-secondary">Unpublish</button>
+            </form>`
+	} else {
+		html += `
             <form method="POST" action="/admin/pages/` + pageIDStr + `/publish" style="display:inline;">
                 <button type="submit" class="btn btn-success">Publish</button>
-            </form>
+            </form>`
+	}
+
+	html += `
         </div>
 
         <div class="section">
