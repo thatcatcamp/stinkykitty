@@ -163,11 +163,16 @@ func DeleteSite(db *gorm.DB, id uint) error {
 
 // AddCustomDomain adds a custom domain to a site
 func AddCustomDomain(db *gorm.DB, siteID uint, domain string) error {
-	// Check if domain is already in use
+	// Check if domain is already in use (including soft-deleted sites)
 	var existing models.Site
-	result := db.Where("custom_domain = ?", domain).First(&existing)
+	result := db.Unscoped().Where("custom_domain = ?", domain).First(&existing)
 	if result.Error == nil {
-		return fmt.Errorf("domain %s is already in use", domain)
+		if existing.DeletedAt.Valid {
+			// Domain is on a deleted site - clear it so it can be reused
+			db.Unscoped().Model(&existing).Update("custom_domain", nil)
+		} else {
+			return fmt.Errorf("domain %s is already in use by site '%s'", domain, existing.Subdomain)
+		}
 	}
 
 	site, err := GetSiteByID(db, siteID)
