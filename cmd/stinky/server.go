@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/handlers"
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
+	"github.com/thatcatcamp/stinkykitty/internal/tls"
 )
 
 var serverCmd = &cobra.Command{
@@ -104,14 +106,62 @@ var serverStartCmd = &cobra.Command{
 		// Handle all other routes as potential pages
 		r.NoRoute(middleware.SiteResolutionMiddleware(db.GetDB(), baseDomain), handlers.ServePage)
 
-		httpPort := config.GetString("server.http_port")
-		addr := fmt.Sprintf(":%s", httpPort)
+		// Check if TLS is enabled
+		if config.GetBool("server.tls_enabled") {
+			// Load TLS config
+			tlsCfg, err := tls.LoadConfig()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to load TLS config: %v\n", err)
+				os.Exit(1)
+			}
 
-		fmt.Printf("Starting StinkyKitty server on %s\n", addr)
-		fmt.Printf("Base domain: %s\n", baseDomain)
-		if err := r.Run(addr); err != nil {
-			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
-			os.Exit(1)
+			// Initialize TLS manager
+			tlsManager, err := tls.NewManager(db.GetDB(), tlsCfg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to initialize TLS manager: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Add HTTPS redirect middleware
+			r.Use(middleware.HTTPSRedirectMiddleware())
+
+			// Start HTTP server (port 80) for ACME challenges + redirects
+			httpPort := config.GetString("server.http_port")
+			httpAddr := fmt.Sprintf(":%s", httpPort)
+			go func() {
+				fmt.Printf("Starting HTTP server on %s (ACME challenges + redirects)\n", httpAddr)
+				if err := http.ListenAndServe(httpAddr, r); err != nil {
+					fmt.Fprintf(os.Stderr, "HTTP server failed: %v\n", err)
+					os.Exit(1)
+				}
+			}()
+
+			// Start HTTPS server (port 443) for main traffic
+			httpsPort := config.GetString("server.https_port")
+			httpsAddr := fmt.Sprintf(":%s", httpsPort)
+			fmt.Printf("Starting HTTPS server on %s\n", httpsAddr)
+			fmt.Printf("Base domain: %s\n", baseDomain)
+
+			server := &http.Server{
+				Addr:      httpsAddr,
+				Handler:   r,
+				TLSConfig: tlsManager.GetTLSConfig(),
+			}
+
+			if err := server.ListenAndServeTLS("", ""); err != nil {
+				fmt.Fprintf(os.Stderr, "HTTPS server error: %v\n", err)
+				os.Exit(1)
+			}
+		} else {
+			// Dev mode - HTTP only (existing behavior)
+			httpPort := config.GetString("server.http_port")
+			httpAddr := fmt.Sprintf(":%s", httpPort)
+			fmt.Printf("Starting HTTP server on %s (TLS disabled)\n", httpAddr)
+			fmt.Printf("Base domain: %s\n", baseDomain)
+			if err := r.Run(httpAddr); err != nil {
+				fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+				os.Exit(1)
+			}
 		}
 	},
 }
