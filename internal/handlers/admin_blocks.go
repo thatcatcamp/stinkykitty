@@ -129,19 +129,18 @@ func EditBlockHandler(c *gin.Context) {
 		return
 	}
 
-	// Parse JSON Data field to extract content for text blocks
-	var content string
+	// Parse JSON Data field based on block type
+	var html string
 	if block.Type == "text" {
+		var content string
 		var data struct {
 			Content string `json:"content"`
 		}
 		if err := json.Unmarshal([]byte(block.Data), &data); err == nil {
 			content = data.Content
 		}
-	}
 
-	// Render HTML form
-	html := fmt.Sprintf(`<!DOCTYPE html>
+		html = fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
     <title>Edit Block</title>
@@ -231,6 +230,135 @@ func EditBlockHandler(c *gin.Context) {
     </div>
 </body>
 </html>`, pageIDStr, blockIDStr, content, pageIDStr)
+	} else if block.Type == "image" {
+		var imageData struct {
+			URL     string `json:"url"`
+			Alt     string `json:"alt"`
+			Caption string `json:"caption"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &imageData); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse image data")
+			return
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Image Block</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .preview {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .preview img {
+            max-width: 100%%;
+            height: auto;
+            display: block;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        button[type="submit"] {
+            background: #2563eb;
+            color: white;
+        }
+        button[type="submit"]:hover {
+            background: #1d4ed8;
+        }
+        a.cancel {
+            padding: 10px 20px;
+            background: #6b7280;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        a.cancel:hover {
+            background: #4b5563;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Image Block</h1>
+        <div class="preview">
+            <img src="%s" alt="%s">
+        </div>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <input type="hidden" name="url" value="%s">
+            <label for="alt">Alt Text:</label>
+            <input type="text" id="alt" name="alt" value="%s" required>
+            <p class="help-text">Required for accessibility. Describe what's in the image.</p>
+
+            <label for="caption">Caption (optional):</label>
+            <input type="text" id="caption" name="caption" value="%s">
+            <p class="help-text">Optional caption to display below the image.</p>
+
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, imageData.URL, imageData.Alt, pageIDStr, blockIDStr, imageData.URL, imageData.Alt, imageData.Caption, pageIDStr)
+	}
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -282,13 +410,30 @@ func UpdateBlockHandler(c *gin.Context) {
 		return
 	}
 
-	// For text blocks: get content from POST form
+	// Update block data based on type
 	if block.Type == "text" {
 		content := c.PostForm("content")
 
 		// Update block.Data with JSON: {"content":"..."}
 		data := map[string]string{
 			"content": content,
+		}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+	} else if block.Type == "image" {
+		url := c.PostForm("url")
+		alt := c.PostForm("alt")
+		caption := c.PostForm("caption")
+
+		// Update block.Data with JSON: {"url":"...", "alt":"...", "caption":"..."}
+		data := map[string]string{
+			"url":     url,
+			"alt":     alt,
+			"caption": caption,
 		}
 		jsonData, err := json.Marshal(data)
 		if err != nil {

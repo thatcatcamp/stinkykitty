@@ -226,6 +226,12 @@ func EditPageHandler(c *gin.Context) {
 	// Build blocks HTML
 	var blocksHTML string
 	for i, block := range page.Blocks {
+		// Get block type label
+		blockTypeLabel := "Text Block"
+		if block.Type == "image" {
+			blockTypeLabel = "Image Block"
+		}
+
 		// Extract preview from JSON content
 		preview := ""
 		if len(block.Data) > 100 {
@@ -262,7 +268,7 @@ func EditPageHandler(c *gin.Context) {
 		blocksHTML += `
 			<div class="block-item">
 				<div class="block-info">
-					<div class="block-type">Text Block</div>
+					<div class="block-type">` + blockTypeLabel + `</div>
 					<div class="block-preview">` + preview + `</div>
 				</div>
 				<div class="block-actions">
@@ -278,7 +284,7 @@ func EditPageHandler(c *gin.Context) {
 	}
 
 	if blocksHTML == "" {
-		blocksHTML = `<div class="empty-state">No blocks yet. Add a text block to get started.</div>`
+		blocksHTML = `<div class="empty-state">No blocks yet. Add a block to get started.</div>`
 	}
 
 	html := `<!DOCTYPE html>
@@ -316,7 +322,7 @@ func EditPageHandler(c *gin.Context) {
         .btn-icon { padding: 6px 10px; font-size: 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
         .btn-icon:hover { background: #5a6268; }
         .empty-state { padding: 40px; text-align: center; color: #999; border: 2px dashed #e0e0e0; border-radius: 4px; }
-        .add-block { margin-top: 15px; }
+        .add-block { margin-top: 15px; display: flex; gap: 10px; }
     </style>
 </head>
 <body>
@@ -353,10 +359,11 @@ func EditPageHandler(c *gin.Context) {
             <h2>Content Blocks</h2>
             ` + blocksHTML + `
             <div class="add-block">
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks">
+                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
                     <input type="hidden" name="type" value="text">
                     <button type="submit" class="btn">+ Add Text Block</button>
                 </form>
+                <a href="/admin/pages/` + pageIDStr + `/blocks/new-image" class="btn" style="background: #17a2b8;">+ Add Image Block</a>
             </div>
         </div>
     </div>
@@ -548,4 +555,187 @@ func DeletePageHandler(c *gin.Context) {
 
 	// Redirect back to dashboard
 	c.Redirect(http.StatusFound, "/admin/dashboard")
+}
+
+// NewImageBlockFormHandler displays the form for adding a new image block
+func NewImageBlockFormHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get page ID from URL
+	pageIDStr := c.Param("id")
+	pageID, err := strconv.Atoi(pageIDStr)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid page ID")
+		return
+	}
+
+	// Load page from database
+	var page models.Page
+	result := db.GetDB().Where("id = ?", pageID).First(&page)
+	if result.Error != nil {
+		c.String(http.StatusNotFound, "Page not found")
+		return
+	}
+
+	// Security check: verify page belongs to current site
+	if page.SiteID != site.ID {
+		c.String(http.StatusForbidden, "Access denied")
+		return
+	}
+
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Image Block</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { margin: 0 0 20px 0; font-size: 24px; color: #333; }
+        .back-link { color: #007bff; text-decoration: none; font-size: 14px; margin-bottom: 20px; display: inline-block; }
+        .back-link:hover { text-decoration: underline; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 14px; }
+        input[type="text"], input[type="file"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        input[type="file"] { padding: 8px; }
+        .help-text { font-size: 13px; color: #666; margin-top: 5px; }
+        .btn { padding: 12px 24px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .btn:hover { background: #138496; }
+        .btn-secondary { background: #6c757d; margin-left: 10px; }
+        .btn-secondary:hover { background: #5a6268; }
+        .preview { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px; display: none; }
+        .preview img { max-width: 100%; height: auto; display: block; margin-bottom: 10px; }
+        #uploadProgress { display: none; margin-top: 10px; padding: 10px; background: #e7f3ff; border-radius: 4px; color: #0066cc; }
+    </style>
+    <script>
+        let uploadedImageURL = '';
+
+        async function handleImageUpload() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select an image file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const progress = document.getElementById('uploadProgress');
+            progress.style.display = 'block';
+            progress.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch('/admin/upload/image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+
+                const data = await response.json();
+                uploadedImageURL = data.url;
+
+                // Show preview
+                const preview = document.getElementById('preview');
+                const previewImg = document.getElementById('previewImg');
+                previewImg.src = data.url;
+                preview.style.display = 'block';
+
+                progress.textContent = 'Upload complete!';
+                progress.style.background = '#d4edda';
+                progress.style.color = '#155724';
+
+                // Enable submit button
+                document.getElementById('submitBtn').disabled = false;
+            } catch (error) {
+                progress.textContent = 'Upload failed. Please try again.';
+                progress.style.background = '#f8d7da';
+                progress.style.color = '#721c24';
+            }
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+
+            if (!uploadedImageURL) {
+                alert('Please upload an image first');
+                return;
+            }
+
+            const alt = document.getElementById('altText').value;
+            const caption = document.getElementById('caption').value;
+
+            // Create JSON data
+            const blockData = {
+                url: uploadedImageURL,
+                alt: alt,
+                caption: caption
+            };
+
+            // Submit form with JSON data
+            const form = document.getElementById('imageBlockForm');
+            const dataInput = document.createElement('input');
+            dataInput.type = 'hidden';
+            dataInput.name = 'data';
+            dataInput.value = JSON.stringify(blockData);
+            form.appendChild(dataInput);
+
+            const typeInput = document.createElement('input');
+            typeInput.type = 'hidden';
+            typeInput.name = 'type';
+            typeInput.value = 'image';
+            form.appendChild(typeInput);
+
+            form.submit();
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin/pages/` + pageIDStr + `/edit" class="back-link">← Back to Edit Page</a>
+
+        <h1>Add Image Block</h1>
+
+        <form id="imageBlockForm" method="POST" action="/admin/pages/` + pageIDStr + `/blocks" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label for="imageFile">Select Image</label>
+                <input type="file" id="imageFile" accept="image/*" onchange="handleImageUpload()" required>
+                <p class="help-text">Supported formats: JPG, PNG, GIF, WebP</p>
+                <div id="uploadProgress"></div>
+            </div>
+
+            <div id="preview" class="preview">
+                <img id="previewImg" alt="Preview">
+            </div>
+
+            <div class="form-group">
+                <label for="altText">Alt Text</label>
+                <input type="text" id="altText" placeholder="Describe the image for accessibility" required>
+                <p class="help-text">Required for accessibility. Describe what's in the image.</p>
+            </div>
+
+            <div class="form-group">
+                <label for="caption">Caption (optional)</label>
+                <input type="text" id="caption" placeholder="Optional caption to display below image">
+            </div>
+
+            <button type="submit" id="submitBtn" class="btn" disabled>Add Image Block</button>
+            <a href="/admin/pages/` + pageIDStr + `/edit" class="btn btn-secondary" style="text-decoration: none;">Cancel</a>
+        </form>
+    </div>
+</body>
+</html>`
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }

@@ -68,6 +68,9 @@ var serverStartCmd = &cobra.Command{
 			// Public content routes
 			siteGroup.GET("/", handlers.ServeHomepage)
 
+			// Static file serving for uploads (site-specific)
+			siteGroup.GET("/uploads/*filepath", handlers.ServeUploadedFile)
+
 			// Admin routes
 			adminGroup := siteGroup.Group("/admin")
 			adminGroup.Use(middleware.IPFilterMiddleware(blocklist))
@@ -96,11 +99,13 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/pages/:id/unpublish", handlers.UnpublishPageHandler)
 					adminGroup.POST("/pages/:id/delete", handlers.DeletePageHandler)
 					adminGroup.POST("/pages/:id/blocks", handlers.CreateBlockHandler)
+					adminGroup.GET("/pages/:id/blocks/new-image", handlers.NewImageBlockFormHandler)
 					adminGroup.GET("/pages/:id/blocks/:block_id/edit", handlers.EditBlockHandler)
 					adminGroup.POST("/pages/:id/blocks/:block_id", handlers.UpdateBlockHandler)
 					adminGroup.POST("/pages/:id/blocks/:block_id/delete", handlers.DeleteBlockHandler)
 					adminGroup.POST("/pages/:id/blocks/:block_id/move-up", handlers.MoveBlockUpHandler)
 					adminGroup.POST("/pages/:id/blocks/:block_id/move-down", handlers.MoveBlockDownHandler)
+					adminGroup.POST("/upload/image", handlers.UploadImageHandler)
 				}
 			}
 		}
