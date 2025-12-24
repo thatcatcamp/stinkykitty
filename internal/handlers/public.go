@@ -118,7 +118,36 @@ func ServePage(c *gin.Context) {
 		First(&page)
 
 	if result.Error != nil {
-		c.String(http.StatusNotFound, "Page not found")
+		// Render nice 404 page
+		html := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Page Not Found - %s</title>
+	<style>
+		body { font-family: system-ui, sans-serif; max-width: 600px; margin: 100px auto; padding: 20px; text-align: center; }
+		h1 { font-size: 72px; margin: 0; color: #dc3545; }
+		h2 { font-size: 24px; color: #333; margin: 20px 0; }
+		p { color: #666; line-height: 1.6; }
+		a { color: #007bff; text-decoration: none; }
+		a:hover { text-decoration: underline; }
+		.links { margin-top: 30px; }
+		.links a { margin: 0 10px; }
+	</style>
+</head>
+<body>
+	<h1>404</h1>
+	<h2>Page Not Found</h2>
+	<p>The page you're looking for doesn't exist or hasn't been published yet.</p>
+	<div class="links">
+		<a href="/">← Home</a>
+		<a href="/admin/login">Admin Login</a>
+	</div>
+</body>
+</html>`, site.Subdomain)
+		c.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(html))
 		return
 	}
 
