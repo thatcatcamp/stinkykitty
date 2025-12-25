@@ -108,42 +108,125 @@ func LogoutHandler(c *gin.Context) {
 
 // LoginFormHandler shows the login form
 func LoginFormHandler(c *gin.Context) {
-	siteVal, exists := c.Get("site")
-	if !exists {
-		c.String(http.StatusInternalServerError, "Site not found")
-		return
-	}
-	site := siteVal.(*models.Site)
-
 	html := `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Login - ` + site.Subdomain + `</title>
+    <title>Sign In - StinkyKitty</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-        .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { margin: 0 0 20px 0; font-size: 24px; color: #333; }
-        .site-name { color: #666; font-size: 14px; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #0056b3; }
-        .error { color: #dc3545; margin-top: 10px; font-size: 14px; }
-        label { font-size: 14px; color: #555; display: block; margin-top: 12px; }
+        ` + GetDesignSystemCSS() + `
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: var(--spacing-base);
+        }
+
+        .login-card {
+            background: var(--color-bg-card);
+            border-radius: var(--radius-base);
+            padding: calc(var(--spacing-base) * 2.5);
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: calc(var(--spacing-base) * 2);
+        }
+
+        .login-logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-accent);
+            margin-bottom: var(--spacing-base);
+        }
+
+        .login-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-base);
+        }
+
+        .login-subtitle {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+        }
+
+        .form-group {
+            margin-bottom: calc(var(--spacing-base) * 1.5);
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-weight: 600;
+            color: var(--color-text-primary);
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .login-button {
+            width: 100%;
+            background: var(--color-accent);
+            color: white;
+            font-size: 16px;
+            padding: calc(var(--spacing-base) * 0.75) var(--spacing-base);
+            margin-top: var(--spacing-base);
+        }
+
+        .login-button:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: var(--spacing-md);
+            font-size: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .login-card {
+                padding: var(--spacing-md);
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Admin Login</h1>
-        <div class="site-name">` + site.Subdomain + `</div>
-        <form method="POST" action="/admin/login">
-            <label>Email</label>
-            <input type="email" name="email" required autofocus>
-            <label>Password</label>
-            <input type="password" name="password" required>
-            <button type="submit">Log In</button>
-        </form>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">🐱 StinkyKitty</div>
+                <h1 class="login-title">Sign In</h1>
+                <p class="login-subtitle">One account for all your camps</p>
+            </div>
+
+            <form method="POST" action="/admin/login">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="admin@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <button type="submit" class="login-button">Sign In</button>
+            </form>
+
+            <div class="login-footer">
+                <p>Secure login • No tracking • Simple & fast</p>
+            </div>
+        </div>
     </div>
 </body>
 </html>`

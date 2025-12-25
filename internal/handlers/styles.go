@@ -1,0 +1,98 @@
+package handlers
+
+const (
+	// Color Palette
+	ColorBgPrimary   = "#FAFAF8"   // Cream background
+	ColorBgCard      = "#FFFFFF"   // White card
+	ColorTextPrimary = "#2D2D2D"   // Dark charcoal
+	ColorTextSecond  = "#6B7280"   // Light gray
+	ColorAccent      = "#2E8B9E"   // Teal accent
+	ColorAccentHover = "#1E6F7F"   // Darker teal
+	ColorSuccess     = "#10B981"   // Green (published)
+	ColorWarning     = "#F59E0B"   // Amber (draft)
+	ColorDanger      = "#EF4444"   // Red (delete)
+	ColorBorder      = "#E5E5E3"   // Subtle border
+)
+
+// Returns full stylesheet with CSS variables and base styles
+func GetDesignSystemCSS() string {
+	return `
+:root {
+	--color-bg-primary: ` + ColorBgPrimary + `;
+	--color-bg-card: ` + ColorBgCard + `;
+	--color-text-primary: ` + ColorTextPrimary + `;
+	--color-text-secondary: ` + ColorTextSecond + `;
+	--color-accent: ` + ColorAccent + `;
+	--color-accent-hover: ` + ColorAccentHover + `;
+	--color-success: ` + ColorSuccess + `;
+	--color-warning: ` + ColorWarning + `;
+	--color-danger: ` + ColorDanger + `;
+	--color-border: ` + ColorBorder + `;
+	--font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--spacing-xs: 4px;
+	--spacing-sm: 8px;
+	--spacing-base: 16px;
+	--spacing-md: 24px;
+	--spacing-lg: 40px;
+	--radius-sm: 4px;
+	--radius-base: 6px;
+	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+	--shadow-md: 0 2px 8px rgba(0, 0, 0, 0.12);
+	--transition: 200ms ease;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	font-family: var(--font-family);
+	background: var(--color-bg-primary);
+	color: var(--color-text-primary);
+	margin: 0;
+	padding: 0;
+	line-height: 1.5;
+}
+
+h1 { font-size: 28px; font-weight: 700; margin: 0; }
+h2 { font-size: 20px; font-weight: 600; margin: 0; }
+p { font-size: 16px; margin: 0; }
+small { font-size: 12px; color: var(--color-text-secondary); }
+
+a {
+	color: var(--color-accent);
+	text-decoration: none;
+	transition: color var(--transition);
+}
+
+a:hover { color: var(--color-accent-hover); }
+
+button {
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	border: none;
+	border-radius: var(--radius-base);
+	padding: var(--spacing-base) calc(var(--spacing-base) * 1.5);
+	cursor: pointer;
+	transition: background var(--transition), box-shadow var(--transition);
+}
+
+button:hover { opacity: 0.9; }
+
+input, textarea {
+	font-family: inherit;
+	font-size: 16px;
+	padding: var(--spacing-base);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	transition: border-color var(--transition);
+}
+
+input:focus, textarea:focus {
+	outline: none;
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 2px rgba(46, 139, 158, 0.1);
+}
+
+input::placeholder { color: var(--color-text-secondary); }
+`
+}
