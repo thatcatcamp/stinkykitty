@@ -105,6 +105,7 @@ var serverStartCmd = &cobra.Command{
 				adminGroup.Use(auth.RequireAuth())
 				{
 					adminGroup.GET("/dashboard", handlers.DashboardHandler)
+					adminGroup.GET("/pages", handlers.PagesListHandler)
 					adminGroup.GET("/pages/new", handlers.NewPageFormHandler)
 					adminGroup.POST("/pages", handlers.CreatePageHandler)
 					adminGroup.GET("/pages/:id/edit", handlers.EditPageHandler)

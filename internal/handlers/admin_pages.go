@@ -1035,3 +1035,303 @@ func NewImageBlockFormHandler(c *gin.Context) {
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
+
+// PagesListHandler shows the list of pages for a site
+func PagesListHandler(c *gin.Context) {
+	// Get user from context
+	userVal, exists := c.Get("user")
+	if !exists {
+		c.Redirect(http.StatusFound, "/admin/login")
+		return
+	}
+	user := userVal.(*models.User)
+
+	// Get site ID from query parameter
+	siteIDStr := c.Query("site")
+	if siteIDStr == "" {
+		c.Redirect(http.StatusFound, "/admin/dashboard")
+		return
+	}
+
+	siteID, err := strconv.ParseUint(siteIDStr, 10, 32)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Invalid site ID")
+		return
+	}
+
+	// Get site from context (set by middleware)
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Verify site ID matches
+	if site.ID != uint(siteID) {
+		c.String(http.StatusForbidden, "You don't have access to this site")
+		return
+	}
+
+	// Load all pages for this site
+	var pages []models.Page
+	db.GetDB().Where("site_id = ?", site.ID).Order("slug ASC").Find(&pages)
+
+	// Build pages list HTML
+	var pagesList string
+	homepageExists := false
+
+	for _, page := range pages {
+		if page.Slug == "/" {
+			homepageExists = true
+			status := "Draft"
+			if page.Published {
+				status = "Published"
+			}
+			pagesList += `
+				<div class="page-item">
+					<strong>Homepage</strong> <span class="status">` + status + `</span>
+					<div class="actions">
+						<a href="/admin/pages/` + strconv.FormatUint(uint64(page.ID), 10) + `/edit" class="btn-small">Edit</a>
+					</div>
+				</div>
+			`
+		} else {
+			status := "Draft"
+			if page.Published {
+				status = "Published"
+			}
+			pagesList += `
+				<div class="page-item">
+					<strong>` + page.Title + `</strong> <code>` + page.Slug + `</code> <span class="status">` + status + `</span>
+					<div class="actions">
+						<a href="/admin/pages/` + strconv.FormatUint(uint64(page.ID), 10) + `/edit" class="btn-small">Edit</a>
+						<form method="POST" action="/admin/pages/` + strconv.FormatUint(uint64(page.ID), 10) + `/delete" style="display:inline;" onsubmit="return confirm('Delete this page?')">
+							<button type="submit" class="btn-small btn-danger">Delete</button>
+						</form>
+					</div>
+				</div>
+			`
+		}
+	}
+
+	if !homepageExists {
+		pagesList += `
+			<div class="page-item placeholder">
+				<em>No homepage yet</em>
+				<form method="POST" action="/admin/pages" style="display:inline;">
+					<input type="hidden" name="slug" value="/">
+					<input type="hidden" name="title" value="` + site.Subdomain + `">
+					<button type="submit" class="btn-small">Create Homepage</button>
+				</form>
+			</div>
+		`
+	}
+
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pages - ` + site.Subdomain + `</title>
+    <style>
+        ` + GetDesignSystemCSS() + `
+
+        body { padding: 0; }
+
+        .dashboard-layout {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--color-bg-card);
+            border-bottom: 1px solid var(--color-border);
+            padding: var(--spacing-base) var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-base);
+        }
+
+        .header-left h1 {
+            font-size: 18px;
+            color: var(--color-text-primary);
+            margin: 0;
+        }
+
+        .header-left a {
+            color: var(--color-accent);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-base);
+        }
+
+        .header-right small {
+            color: var(--color-text-secondary);
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: var(--color-accent);
+            color: white;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .container {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: var(--spacing-md);
+        }
+
+        .section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text-primary);
+        }
+
+        .page-item {
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            margin-bottom: var(--spacing-base);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .page-item.placeholder {
+            border-style: dashed;
+            color: var(--color-text-secondary);
+        }
+
+        .status {
+            font-size: 12px;
+            padding: 2px 8px;
+            background: var(--color-warning);
+            border-radius: 3px;
+            margin-left: var(--spacing-base);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            background: var(--color-accent);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-small {
+            padding: var(--spacing-sm) var(--spacing-base);
+            font-size: 13px;
+            background: var(--color-accent);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .btn-small:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-danger {
+            background: var(--color-danger);
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        code {
+            background: var(--color-bg-primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <div class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>` + site.Subdomain + `</h1>
+                    <a href="/admin/dashboard">← Back to Camps</a>
+                </div>
+                <div class="header-right">
+                    <small>` + user.Email + `</small>
+                    <form method="POST" action="/admin/logout" style="display:inline;">
+                        <button type="submit" class="logout-btn">Sign Out</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="section">
+                <h2 class="section-title">Pages</h2>
+                ` + pagesList + `
+                <div style="margin-top: 15px;">
+                    <a href="/admin/pages/new" class="btn">+ Create New Page</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
