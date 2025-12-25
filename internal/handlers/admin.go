@@ -245,19 +245,30 @@ func DashboardHandler(c *gin.Context) {
 	}
 	user := userVal.(*models.User)
 
-	// Get all sites where user is an admin/owner
+	// Get all sites where user is an admin/owner, OR all sites if global admin
 	var userSites []struct {
 		Site models.Site
 		Role string
 	}
 
-	db.GetDB().Raw(`
-		SELECT sites.*, site_users.role
-		FROM sites
-		JOIN site_users ON sites.id = site_users.site_id
-		WHERE site_users.user_id = ? AND (site_users.role = 'owner' OR site_users.role = 'admin')
-		ORDER BY sites.subdomain
-	`, user.ID).Scan(&userSites)
+	if user.IsGlobalAdmin {
+		// Global admins see all sites
+		db.GetDB().Raw(`
+			SELECT sites.*, COALESCE(site_users.role, 'owner') as role
+			FROM sites
+			LEFT JOIN site_users ON sites.id = site_users.site_id AND site_users.user_id = ?
+			ORDER BY sites.subdomain
+		`, user.ID).Scan(&userSites)
+	} else {
+		// Regular users see only their sites
+		db.GetDB().Raw(`
+			SELECT sites.*, site_users.role
+			FROM sites
+			JOIN site_users ON sites.id = site_users.site_id
+			WHERE site_users.user_id = ? AND (site_users.role = 'owner' OR site_users.role = 'admin')
+			ORDER BY sites.subdomain
+		`, user.ID).Scan(&userSites)
+	}
 
 	// Build sites list HTML
 	var sitesHTML string
