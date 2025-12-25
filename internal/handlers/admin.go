@@ -254,7 +254,7 @@ func DashboardHandler(c *gin.Context) {
 	if user.IsGlobalAdmin {
 		// Global admins see all sites
 		db.GetDB().Raw(`
-			SELECT sites.id, sites.subdomain, sites.custom_domain, sites.created_at, sites.deleted_at, sites.soft_delete, COALESCE(site_users.role, 'owner') as role
+			SELECT sites.id, sites.subdomain, sites.custom_domain, COALESCE(site_users.role, 'owner') as role
 			FROM sites
 			LEFT JOIN site_users ON sites.id = site_users.site_id AND site_users.user_id = ?
 			ORDER BY sites.subdomain
@@ -262,7 +262,7 @@ func DashboardHandler(c *gin.Context) {
 	} else {
 		// Regular users see only their sites
 		db.GetDB().Raw(`
-			SELECT sites.id, sites.subdomain, sites.custom_domain, sites.created_at, sites.deleted_at, sites.soft_delete, site_users.role
+			SELECT sites.id, sites.subdomain, sites.custom_domain, site_users.role
 			FROM sites
 			JOIN site_users ON sites.id = site_users.site_id
 			WHERE site_users.user_id = ? AND (site_users.role = 'owner' OR site_users.role = 'admin')
