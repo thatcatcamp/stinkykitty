@@ -310,10 +310,10 @@ func EditPageHandler(c *gin.Context) {
         .btn-success:hover { background: #218838; }
         .section { margin-bottom: 30px; }
         .section h2 { font-size: 18px; margin-bottom: 15px; color: #444; }
-        .block-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .block-info { flex: 1; }
+        .block-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; }
+        .block-info { flex: 1; min-width: 0; }
         .block-type { font-weight: 600; margin-bottom: 5px; font-size: 14px; color: #333; }
-        .block-preview { font-size: 13px; color: #666; font-family: monospace; background: #f8f8f8; padding: 8px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .block-preview { font-size: 13px; color: #666; font-family: monospace; background: #f8f8f8; padding: 8px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
         .block-actions { display: flex; gap: 8px; align-items: center; }
         .btn-small { padding: 6px 12px; font-size: 13px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
         .btn-small:hover { background: #0056b3; }
@@ -358,12 +358,32 @@ func EditPageHandler(c *gin.Context) {
         <div class="section">
             <h2>Content Blocks</h2>
             ` + blocksHTML + `
-            <div class="add-block">
+            <div class="add-block" style="display: flex; flex-wrap: wrap; gap: 10px;">
                 <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
                     <input type="hidden" name="type" value="text">
-                    <button type="submit" class="btn">+ Add Text Block</button>
+                    <button type="submit" class="btn">+ Text</button>
                 </form>
-                <a href="/admin/pages/` + pageIDStr + `/blocks/new-image" class="btn" style="background: #17a2b8;">+ Add Image Block</a>
+                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                    <input type="hidden" name="type" value="heading">
+                    <button type="submit" class="btn" style="background: #6c757d;">+ Heading</button>
+                </form>
+                <a href="/admin/pages/` + pageIDStr + `/blocks/new-image" class="btn" style="background: #17a2b8;">+ Image</a>
+                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                    <input type="hidden" name="type" value="quote">
+                    <button type="submit" class="btn" style="background: #6f42c1;">+ Quote</button>
+                </form>
+                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                    <input type="hidden" name="type" value="button">
+                    <button type="submit" class="btn" style="background: #28a745;">+ Button</button>
+                </form>
+                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                    <input type="hidden" name="type" value="video">
+                    <button type="submit" class="btn" style="background: #dc3545;">+ Video</button>
+                </form>
+                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                    <input type="hidden" name="type" value="spacer">
+                    <button type="submit" class="btn" style="background: #e0e0e0; color: #333;">+ Spacer</button>
+                </form>
             </div>
         </div>
     </div>
