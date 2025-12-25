@@ -187,7 +187,14 @@ func CreatePageHandler(c *gin.Context) {
 
 // EditPageHandler shows the page editor
 func EditPageHandler(c *gin.Context) {
-	// Get site from context
+	// Get user and site from context
+	userVal, exists := c.Get("user")
+	if !exists {
+		c.String(http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+	user := userVal.(*models.User)
+
 	siteVal, exists := c.Get("site")
 	if !exists {
 		c.String(http.StatusInternalServerError, "Site not found")
@@ -230,6 +237,16 @@ func EditPageHandler(c *gin.Context) {
 		blockTypeLabel := "Text Block"
 		if block.Type == "image" {
 			blockTypeLabel = "Image Block"
+		} else if block.Type == "heading" {
+			blockTypeLabel = "Heading Block"
+		} else if block.Type == "quote" {
+			blockTypeLabel = "Quote Block"
+		} else if block.Type == "button" {
+			blockTypeLabel = "Button Block"
+		} else if block.Type == "video" {
+			blockTypeLabel = "Video Block"
+		} else if block.Type == "spacer" {
+			blockTypeLabel = "Spacer Block"
 		}
 
 		// Extract preview from JSON content
@@ -287,6 +304,19 @@ func EditPageHandler(c *gin.Context) {
 		blocksHTML = `<div class="empty-state">No blocks yet. Add a block to get started.</div>`
 	}
 
+	var publishButton string
+	if page.Published {
+		publishButton = `
+                            <form method="POST" action="/admin/pages/` + pageIDStr + `/unpublish" style="display:inline;">
+                                <button type="submit" class="btn btn-secondary">Unpublish</button>
+                            </form>`
+	} else {
+		publishButton = `
+                            <form method="POST" action="/admin/pages/` + pageIDStr + `/publish" style="display:inline;">
+                                <button type="submit" class="btn btn-success">Publish</button>
+                            </form>`
+	}
+
 	html := `<!DOCTYPE html>
 <html>
 <head>
@@ -294,96 +324,342 @@ func EditPageHandler(c *gin.Context) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Edit Page - ` + page.Title + `</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { margin: 0 0 20px 0; font-size: 28px; color: #333; }
-        .back-link { color: #007bff; text-decoration: none; font-size: 14px; margin-bottom: 20px; display: inline-block; }
-        .back-link:hover { text-decoration: underline; }
-        .page-header { margin-bottom: 30px; }
-        .page-header input { width: 100%; padding: 12px; font-size: 18px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .page-actions { margin-top: 15px; display: flex; gap: 10px; }
-        .btn { padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; }
-        .btn:hover { background: #0056b3; }
-        .btn-secondary { background: #6c757d; }
-        .btn-secondary:hover { background: #5a6268; }
-        .btn-success { background: #28a745; }
-        .btn-success:hover { background: #218838; }
-        .section { margin-bottom: 30px; }
-        .section h2 { font-size: 18px; margin-bottom: 15px; color: #444; }
-        .block-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; }
-        .block-info { flex: 1; min-width: 0; }
-        .block-type { font-weight: 600; margin-bottom: 5px; font-size: 14px; color: #333; }
-        .block-preview { font-size: 13px; color: #666; font-family: monospace; background: #f8f8f8; padding: 8px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-        .block-actions { display: flex; gap: 8px; align-items: center; }
-        .btn-small { padding: 6px 12px; font-size: 13px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-        .btn-small:hover { background: #0056b3; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
-        .btn-icon { padding: 6px 10px; font-size: 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-icon:hover { background: #5a6268; }
-        .empty-state { padding: 40px; text-align: center; color: #999; border: 2px dashed #e0e0e0; border-radius: 4px; }
-        .add-block { margin-top: 15px; display: flex; gap: 10px; }
+        ` + GetDesignSystemCSS() + `
+
+        body {
+            padding: 0;
+        }
+
+        .page-layout {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--color-bg-card);
+            border-bottom: 1px solid var(--color-border);
+            padding: var(--spacing-base) var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            font-size: 18px;
+            color: var(--color-text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-base);
+            font-size: 14px;
+        }
+
+        .header-right small {
+            color: var(--color-text-secondary);
+        }
+
+        .logout-btn {
+            background: transparent;
+            color: var(--color-accent);
+            padding: var(--spacing-sm) var(--spacing-base);
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            color: var(--color-accent-hover);
+        }
+
+        .container {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: var(--spacing-md);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-accent);
+            font-size: 14px;
+        }
+
+        .page-header {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .page-title-section {
+            background: var(--color-bg-card);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .page-title-section input {
+            width: 100%;
+            font-size: 20px;
+            font-weight: 600;
+            padding: var(--spacing-base);
+            margin-bottom: var(--spacing-base);
+        }
+
+        .page-actions {
+            display: flex;
+            gap: var(--spacing-base);
+        }
+
+        .btn {
+            background: var(--color-accent);
+            color: white;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background var(--transition);
+        }
+
+        .btn:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--color-text-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: var(--color-success);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section h2 {
+            font-size: 18px;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text-primary);
+        }
+
+        .blocks-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-base);
+        }
+
+        .block-item {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            padding: var(--spacing-base);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--spacing-md);
+            transition: box-shadow var(--transition), background var(--transition);
+        }
+
+        .block-item:hover {
+            box-shadow: var(--shadow-md);
+            background: #fafbfc;
+        }
+
+        .block-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .block-type {
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            font-size: 14px;
+            color: var(--color-text-primary);
+        }
+
+        .block-preview {
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            font-family: "Monaco", "Courier New", monospace;
+            background: #f8f9fa;
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        .block-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .btn-icon {
+            padding: var(--spacing-sm) calc(var(--spacing-sm) * 1.25);
+            font-size: 14px;
+            background: var(--color-text-secondary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .btn-icon:hover {
+            background: #4b5563;
+        }
+
+        .btn-icon:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .btn-small {
+            padding: var(--spacing-sm) var(--spacing-base);
+            font-size: 13px;
+            background: var(--color-accent);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .btn-small:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-danger {
+            background: var(--color-danger);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .empty-state {
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--color-text-secondary);
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-base);
+            background: #fafbfc;
+        }
+
+        .add-block {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-base);
+            padding: var(--spacing-md);
+            background: var(--color-bg-card);
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+        }
+
+        .add-block .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: 13px;
+        }
+
+        .btn-text { background: var(--color-accent); }
+        .btn-heading { background: #6c757d; }
+        .btn-image { background: #17a2b8; }
+        .btn-quote { background: #6f42c1; }
+        .btn-button { background: var(--color-success); }
+        .btn-video { background: var(--color-danger); }
+        .btn-spacer { background: #e0e0e0; color: var(--color-text-primary); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/admin/dashboard" class="back-link">← Back to Dashboard</a>
-
-        <h1>Edit Page</h1>
-
-        <div class="page-header">
-            <form method="POST" action="/admin/pages/` + pageIDStr + `">
-                <input type="text" name="title" value="` + page.Title + `" placeholder="Page Title" required>
-                <div class="page-actions">
-                    <button type="submit" class="btn">Save Draft</button>
+    <div class="page-layout">
+        <div class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>Your Site</h1>
                 </div>
-            </form>`
-
-	// Show Publish or Unpublish button based on current status
-	if page.Published {
-		html += `
-            <form method="POST" action="/admin/pages/` + pageIDStr + `/unpublish" style="display:inline;">
-                <button type="submit" class="btn btn-secondary">Unpublish</button>
-            </form>`
-	} else {
-		html += `
-            <form method="POST" action="/admin/pages/` + pageIDStr + `/publish" style="display:inline;">
-                <button type="submit" class="btn btn-success">Publish</button>
-            </form>`
-	}
-
-	html += `
+                <div class="header-right">
+                    <small>` + site.Subdomain + `</small>
+                    <small>` + user.Email + `</small>
+                    <form method="POST" action="/admin/logout" style="display:inline;">
+                        <button type="submit" class="logout-btn">Sign Out</button>
+                    </form>
+                </div>
+            </div>
         </div>
 
-        <div class="section">
-            <h2>Content Blocks</h2>
-            ` + blocksHTML + `
-            <div class="add-block" style="display: flex; flex-wrap: wrap; gap: 10px;">
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
-                    <input type="hidden" name="type" value="text">
-                    <button type="submit" class="btn">+ Text</button>
-                </form>
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
-                    <input type="hidden" name="type" value="heading">
-                    <button type="submit" class="btn" style="background: #6c757d;">+ Heading</button>
-                </form>
-                <a href="/admin/pages/` + pageIDStr + `/blocks/new-image" class="btn" style="background: #17a2b8;">+ Image</a>
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
-                    <input type="hidden" name="type" value="quote">
-                    <button type="submit" class="btn" style="background: #6f42c1;">+ Quote</button>
-                </form>
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
-                    <input type="hidden" name="type" value="button">
-                    <button type="submit" class="btn" style="background: #28a745;">+ Button</button>
-                </form>
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
-                    <input type="hidden" name="type" value="video">
-                    <button type="submit" class="btn" style="background: #dc3545;">+ Video</button>
-                </form>
-                <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
-                    <input type="hidden" name="type" value="spacer">
-                    <button type="submit" class="btn" style="background: #e0e0e0; color: #333;">+ Spacer</button>
-                </form>
+        <div class="container">
+            <a href="/admin/dashboard" class="back-link">← Back to Dashboard</a>
+
+            <div class="page-header">
+                <div class="page-title-section">
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `">
+                        <input type="text" name="title" value="` + page.Title + `" placeholder="Page Title" required>
+                        <div class="page-actions">
+                            <button type="submit" class="btn">Save Draft</button>
+                            ` + publishButton + `
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Content Blocks</h2>
+                <div class="blocks-list">
+                    ` + blocksHTML + `
+                </div>
+                <div class="add-block">
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="text">
+                        <button type="submit" class="btn btn-text">+ Text</button>
+                    </form>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="heading">
+                        <button type="submit" class="btn btn-heading">+ Heading</button>
+                    </form>
+                    <a href="/admin/pages/` + pageIDStr + `/blocks/new-image" class="btn btn-image">+ Image</a>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="quote">
+                        <button type="submit" class="btn btn-quote">+ Quote</button>
+                    </form>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="button">
+                        <button type="submit" class="btn btn-button">+ Button</button>
+                    </form>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="video">
+                        <button type="submit" class="btn btn-video">+ Video</button>
+                    </form>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="spacer">
+                        <button type="submit" class="btn btn-spacer">+ Spacer</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
