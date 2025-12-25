@@ -247,8 +247,10 @@ func DashboardHandler(c *gin.Context) {
 
 	// Get all sites where user is an admin/owner, OR all sites if global admin
 	var userSites []struct {
-		Site models.Site
-		Role string
+		ID           uint
+		Subdomain    string
+		CustomDomain *string
+		Role         string
 	}
 
 	if user.IsGlobalAdmin {
@@ -277,20 +279,20 @@ func DashboardHandler(c *gin.Context) {
 	} else {
 		for _, us := range userSites {
 			var domainDisplay string
-			if us.Site.CustomDomain != nil && *us.Site.CustomDomain != "" {
-				domainDisplay = *us.Site.CustomDomain
+			if us.CustomDomain != nil && *us.CustomDomain != "" {
+				domainDisplay = *us.CustomDomain
 			} else {
-				domainDisplay = us.Site.Subdomain + ".stinkykitty.org"
+				domainDisplay = us.Subdomain + ".stinkykitty.org"
 			}
 
 			sitesHTML += `
 				<div class="site-card">
 					<div class="site-info">
-						<h3>` + us.Site.Subdomain + `</h3>
+						<h3>` + us.Subdomain + `</h3>
 						<small>` + domainDisplay + `</small>
 					</div>
 					<div class="site-actions">
-						<a href="/admin/pages?site=` + fmt.Sprintf("%d", us.Site.ID) + `" class="btn-small">Edit</a>
+						<a href="/admin/pages?site=` + fmt.Sprintf("%d", us.ID) + `" class="btn-small">Edit</a>
 						<a href="https://` + domainDisplay + `" target="_blank" class="btn-small btn-secondary">View</a>
 					</div>
 				</div>
