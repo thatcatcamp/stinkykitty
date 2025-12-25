@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -614,7 +615,7 @@ func EditPageHandler(c *gin.Context) {
         </div>
 
         <div class="container">
-            <a href="/admin/dashboard" class="back-link">← Back to Dashboard</a>
+            <a href="/admin/pages?site=` + fmt.Sprintf("%d", site.ID) + `" class="back-link">← Back to Pages</a>
 
             <div class="page-header">
                 <div class="page-title-section">
@@ -1326,6 +1327,7 @@ func PagesListHandler(c *gin.Context) {
                 ` + pagesList + `
                 <div style="margin-top: 15px;">
                     <a href="/admin/pages/new" class="btn">+ Create New Page</a>
+                    <a href="/admin/menu" class="btn" style="background: #17a2b8; margin-left: 10px;">Navigation Menu</a>
                 </div>
             </div>
         </div>
