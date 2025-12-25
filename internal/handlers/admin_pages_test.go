@@ -308,8 +308,8 @@ func TestEditPageHandler_Success(t *testing.T) {
 	}
 
 	// Check for back link
-	if !contains(body, "Back to Dashboard") {
-		t.Error("'Back to Dashboard' link not found")
+	if !contains(body, "Back to Pages") {
+		t.Error("'Back to Pages' link not found")
 	}
 
 	// Check that forms POST to correct endpoints
