@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
@@ -236,76 +235,56 @@ func LoginFormHandler(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
-// DashboardHandler renders the admin dashboard
+// DashboardHandler shows the admin dashboard with list of sites
 func DashboardHandler(c *gin.Context) {
-	// Get user and site from context (set by auth middleware)
+	// Get user from context
 	userVal, exists := c.Get("user")
 	if !exists {
-		c.String(http.StatusUnauthorized, "Not authenticated")
+		c.Redirect(http.StatusFound, "/admin/login")
 		return
 	}
 	user := userVal.(*models.User)
 
-	siteVal, exists := c.Get("site")
-	if !exists {
-		c.String(http.StatusInternalServerError, "Site not found")
-		return
+	// Get all sites where user is an admin/owner
+	var userSites []struct {
+		Site models.Site
+		Role string
 	}
-	site := siteVal.(*models.Site)
 
-	// Load all pages for this site
-	var pages []models.Page
-	db.GetDB().Where("site_id = ?", site.ID).Order("slug ASC").Find(&pages)
+	db.GetDB().Raw(`
+		SELECT sites.*, site_users.role
+		FROM sites
+		JOIN site_users ON sites.id = site_users.site_id
+		WHERE site_users.user_id = ? AND (site_users.role = 'owner' OR site_users.role = 'admin')
+		ORDER BY sites.subdomain
+	`, user.ID).Scan(&userSites)
 
-	// Build pages list HTML
-	var pagesList strings.Builder
-	homepageExists := false
-
-	for _, page := range pages {
-		if page.Slug == "/" {
-			homepageExists = true
-			status := "Draft"
-			if page.Published {
-				status = "Published"
+	// Build sites list HTML
+	var sitesHTML string
+	if len(userSites) == 0 {
+		sitesHTML = `<div class="empty-state">No sites yet. Contact an administrator to create one.</div>`
+	} else {
+		for _, us := range userSites {
+			var domainDisplay string
+			if us.Site.CustomDomain != nil && *us.Site.CustomDomain != "" {
+				domainDisplay = *us.Site.CustomDomain
+			} else {
+				domainDisplay = us.Site.Subdomain + ".stinkykitty.org"
 			}
-			pagesList.WriteString(fmt.Sprintf(`
-				<div class="page-item">
-					<strong>Homepage</strong> <span class="status">%s</span>
-					<div class="actions">
-						<a href="/admin/pages/%d/edit" class="btn-small">Edit</a>
+
+			sitesHTML += `
+				<div class="site-card">
+					<div class="site-info">
+						<h3>` + us.Site.Subdomain + `</h3>
+						<small>` + domainDisplay + `</small>
+					</div>
+					<div class="site-actions">
+						<a href="/admin/pages?site=` + fmt.Sprintf("%d", us.Site.ID) + `" class="btn-small">Edit</a>
+						<a href="https://` + domainDisplay + `" target="_blank" class="btn-small btn-secondary">View</a>
 					</div>
 				</div>
-			`, status, page.ID))
-		} else {
-			status := "Draft"
-			if page.Published {
-				status = "Published"
-			}
-			pagesList.WriteString(fmt.Sprintf(`
-				<div class="page-item">
-					<strong>%s</strong> <code>%s</code> <span class="status">%s</span>
-					<div class="actions">
-						<a href="/admin/pages/%d/edit" class="btn-small">Edit</a>
-						<form method="POST" action="/admin/pages/%d/delete" style="display:inline;" onsubmit="return confirm('Delete this page?')">
-							<button type="submit" class="btn-small btn-danger">Delete</button>
-						</form>
-					</div>
-				</div>
-			`, page.Title, page.Slug, status, page.ID, page.ID))
+			`
 		}
-	}
-
-	if !homepageExists {
-		pagesList.WriteString(`
-			<div class="page-item placeholder">
-				<em>No homepage yet</em>
-				<form method="POST" action="/admin/pages" style="display:inline;">
-					<input type="hidden" name="slug" value="/">
-					<input type="hidden" name="title" value="` + site.Subdomain + `">
-					<button type="submit" class="btn-small">Create Homepage</button>
-				</form>
-			</div>
-		`)
 	}
 
 	html := `<!DOCTYPE html>
@@ -313,49 +292,283 @@ func DashboardHandler(c *gin.Context) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Dashboard - ` + site.Subdomain + `</title>
+    <title>Dashboard - StinkyKitty</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { margin: 0 0 10px 0; font-size: 28px; color: #333; }
-        .user-info { color: #666; font-size: 14px; margin-bottom: 30px; }
-        .section { margin-bottom: 30px; }
-        .section h2 { font-size: 18px; margin-bottom: 15px; color: #444; }
-        .page-item { padding: 15px; border: 1px solid #e0e0e0; border-radius: 4px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .page-item.placeholder { border-style: dashed; color: #999; }
-        .status { font-size: 12px; padding: 2px 8px; background: #e0e0e0; border-radius: 3px; margin-left: 10px; }
-        .actions { display: flex; gap: 8px; }
-        .btn { padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; }
-        .btn:hover { background: #0056b3; }
-        .btn-small { padding: 6px 12px; font-size: 13px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; border: none; cursor: pointer; }
-        .btn-small:hover { background: #0056b3; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
-        code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
-        .logout { float: right; font-size: 14px; }
+        ` + GetDesignSystemCSS() + `
+
+        body { padding: 0; }
+
+        .dashboard-layout {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: var(--color-bg-card);
+            border-bottom: 1px solid var(--color-border);
+            padding: var(--spacing-base) var(--spacing-md);
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            font-size: 18px;
+            color: var(--color-text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-base);
+        }
+
+        .header-right small {
+            color: var(--color-text-secondary);
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: var(--color-accent);
+            color: white;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .container {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: var(--spacing-md);
+        }
+
+        .hero {
+            background: var(--color-bg-card);
+            padding: var(--spacing-lg) var(--spacing-md);
+            border-radius: var(--radius-base);
+            border: 1px solid var(--color-border);
+            margin-bottom: var(--spacing-lg);
+            text-align: center;
+        }
+
+        .hero h2 {
+            margin-bottom: var(--spacing-base);
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--spacing-base);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: var(--color-accent);
+            color: white;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: background var(--transition);
+        }
+
+        .btn:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--color-text-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        .btn-outline:hover {
+            background: rgba(46, 139, 158, 0.05);
+        }
+
+        .section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-text-primary);
+        }
+
+        .sites-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: var(--spacing-base);
+        }
+
+        .site-card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-base);
+            padding: var(--spacing-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: box-shadow var(--transition), background var(--transition);
+        }
+
+        .site-card:hover {
+            box-shadow: var(--shadow-md);
+            background: #fafbfc;
+        }
+
+        .site-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0 0 var(--spacing-sm) 0;
+            color: var(--color-text-primary);
+        }
+
+        .site-info small {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+
+        .site-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-shrink: 0;
+        }
+
+        .btn-small {
+            padding: var(--spacing-sm) var(--spacing-base);
+            font-size: 13px;
+            background: var(--color-accent);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .btn-small:hover {
+            background: var(--color-accent-hover);
+        }
+
+        .btn-small.btn-secondary {
+            background: var(--color-text-secondary);
+        }
+
+        .btn-small.btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .empty-state {
+            padding: var(--spacing-lg);
+            text-align: center;
+            color: var(--color-text-secondary);
+            border: 2px dashed var(--color-border);
+            border-radius: var(--radius-base);
+            background: #fafbfc;
+        }
+
+        .footer {
+            padding: var(--spacing-md);
+            text-align: center;
+            border-top: 1px solid var(--color-border);
+            margin-top: var(--spacing-lg);
+        }
+
+        .footer a {
+            color: var(--color-accent);
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 var(--spacing-base);
+        }
+
+        @media (max-width: 640px) {
+            .site-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .btn, .hero-buttons .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <form method="POST" action="/admin/logout" class="logout">
-            <button type="submit" class="btn-small">Logout</button>
-        </form>
-        <h1>Admin Dashboard</h1>
-        <div class="user-info">
-            ` + user.Email + ` • ` + site.Subdomain + `
-        </div>
-
-        <div class="section">
-            <h2>Pages</h2>
-            ` + pagesList.String() + `
-            <div style="margin-top: 15px;">
-                <a href="/admin/pages/new" class="btn">+ Create New Page</a>
-                <a href="/admin/menu" class="btn" style="background: #17a2b8; margin-left: 10px;">Navigation Menu</a>
+    <div class="dashboard-layout">
+        <div class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>StinkyKitty Admin</h1>
+                </div>
+                <div class="header-right">
+                    <small>` + user.Email + `</small>
+                    <form method="POST" action="/admin/logout" style="display:inline;">
+                        <button type="submit" class="logout-btn">Sign Out</button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <div class="section">
-            <a href="/" target="_blank" style="color: #007bff; text-decoration: none;">→ View Public Site</a>
+        <div class="container">
+            <div class="hero">
+                <h2>Your Camps</h2>
+                <p>Select a camp to edit its pages and settings</p>
+                <div class="hero-buttons">
+                    <a href="/admin/pages/new" class="btn">+ Create New Camp</a>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3 class="section-title">All Camps</h3>
+                <div class="sites-list">
+                    ` + sitesHTML + `
+                </div>
+            </div>
+
+            <div class="footer">
+                <a href="/">← Back to Home</a>
+                <a href="/admin/docs">Documentation</a>
+            </div>
         </div>
     </div>
 </body>
