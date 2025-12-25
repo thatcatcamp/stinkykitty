@@ -39,6 +39,7 @@ func GetDesignSystemCSS() string {
 	--shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
 	--shadow-md: 0 2px 8px rgba(0, 0, 0, 0.12);
 	--transition: 200ms ease;
+	--focus-ring-color: rgba(46, 139, 158, 0.1);
 }
 
 * { box-sizing: border-box; }
@@ -90,7 +91,7 @@ input, textarea {
 input:focus, textarea:focus {
 	outline: none;
 	border-color: var(--color-accent);
-	box-shadow: 0 0 0 2px rgba(46, 139, 158, 0.1);
+	box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
 input::placeholder { color: var(--color-text-secondary); }

@@ -106,7 +106,7 @@ func LogoutHandler(c *gin.Context) {
 	c.Redirect(http.StatusFound, "/admin/login")
 }
 
-// LoginFormHandler shows the login form
+// LoginFormHandler displays the StinkyKitty login page with warm professional design using the design system
 func LoginFormHandler(c *gin.Context) {
 	html := `<!DOCTYPE html>
 <html>
@@ -209,15 +209,17 @@ func LoginFormHandler(c *gin.Context) {
                 <p class="login-subtitle">One account for all your camps</p>
             </div>
 
+            <div id="error-message" style="display:none; color: var(--color-danger); margin-bottom: var(--spacing-md); text-align: center;"></div>
+
             <form method="POST" action="/admin/login">
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="admin@example.com" required>
+                    <input type="email" id="email" name="email" placeholder="admin@example.com" autocomplete="email" required>
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" autocomplete="current-password" required>
                 </div>
 
                 <button type="submit" class="login-button">Sign In</button>
