@@ -36,6 +36,16 @@ func TestEditPageHandler_PageNotFound(t *testing.T) {
 	testDB := setupTestDB(t)
 	db.SetDB(testDB)
 
+	// Auto-migrate User model
+	testDB.AutoMigrate(&models.User{})
+
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
+
 	// Create test site
 	site := &models.Site{
 		ID:        1,
@@ -52,10 +62,11 @@ func TestEditPageHandler_PageNotFound(t *testing.T) {
 	req := httptest.NewRequest("GET", "/admin/pages/999/edit", nil)
 	w := httptest.NewRecorder()
 
-	// Set site in context
+	// Set user and site in context
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "999"}}
+	c.Set("user", user)
 	c.Set("site", site)
 
 	// Execute
@@ -76,6 +87,16 @@ func TestEditPageHandler_InvalidPageID(t *testing.T) {
 	testDB := setupTestDB(t)
 	db.SetDB(testDB)
 
+	// Auto-migrate User model
+	testDB.AutoMigrate(&models.User{})
+
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
+
 	// Create test site
 	site := &models.Site{
 		ID:        1,
@@ -92,10 +113,11 @@ func TestEditPageHandler_InvalidPageID(t *testing.T) {
 	req := httptest.NewRequest("GET", "/admin/pages/invalid/edit", nil)
 	w := httptest.NewRecorder()
 
-	// Set site in context
+	// Set user and site in context
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "invalid"}}
+	c.Set("user", user)
 	c.Set("site", site)
 
 	// Execute
@@ -112,6 +134,16 @@ func TestEditPageHandler_WrongSite(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	testDB := setupTestDB(t)
 	db.SetDB(testDB)
+
+	// Auto-migrate User model
+	testDB.AutoMigrate(&models.User{})
+
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
 
 	// Create two test sites
 	site1 := &models.Site{
@@ -146,6 +178,7 @@ func TestEditPageHandler_WrongSite(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "1"}}
+	c.Set("user", user)
 	c.Set("site", site2) // Different site!
 
 	// Execute
@@ -165,6 +198,16 @@ func TestEditPageHandler_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	testDB := setupTestDB(t)
 	db.SetDB(testDB)
+
+	// Auto-migrate User model
+	testDB.AutoMigrate(&models.User{})
+
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
 
 	// Create test site
 	site := &models.Site{
@@ -208,6 +251,7 @@ func TestEditPageHandler_Success(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "1"}}
+	c.Set("user", user)
 	c.Set("site", site)
 
 	// Execute
@@ -225,15 +269,21 @@ func TestEditPageHandler_Success(t *testing.T) {
 		t.Error("Page title not found in response")
 	}
 
-	// Check for buttons
+	// Check for new design structure
+	if !contains(body, "Content Blocks") {
+		t.Error("'Content Blocks' section not found")
+	}
+
+	if !contains(body, "+ Text") {
+		t.Error("'+ Text' button not found")
+	}
+
 	if !contains(body, "Save Draft") {
 		t.Error("'Save Draft' button not found")
 	}
+
 	if !contains(body, "Publish") {
 		t.Error("'Publish' button not found")
-	}
-	if !contains(body, "Add Text Block") {
-		t.Error("'Add Text Block' button not found")
 	}
 
 	// Check for block content
@@ -280,6 +330,16 @@ func TestEditPageHandler_EmptyBlocks(t *testing.T) {
 	testDB := setupTestDB(t)
 	db.SetDB(testDB)
 
+	// Auto-migrate User model
+	testDB.AutoMigrate(&models.User{})
+
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
+
 	// Create test site
 	site := &models.Site{
 		ID:        1,
@@ -305,6 +365,7 @@ func TestEditPageHandler_EmptyBlocks(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{{Key: "id", Value: "1"}}
+	c.Set("user", user)
 	c.Set("site", site)
 
 	// Execute
