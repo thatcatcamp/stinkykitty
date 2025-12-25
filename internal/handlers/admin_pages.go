@@ -407,6 +407,15 @@ func EditPageHandler(c *gin.Context) {
             border-radius: var(--radius-base);
             border: 1px solid var(--color-border);
             margin-bottom: var(--spacing-md);
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+            align-items: flex-end;
+        }
+
+        .page-title-section > form {
+            flex: 1;
+            min-width: 250px;
         }
 
         .page-title-section input {
@@ -415,6 +424,10 @@ func EditPageHandler(c *gin.Context) {
             font-weight: 600;
             padding: var(--spacing-base);
             margin-bottom: var(--spacing-base);
+        }
+
+        .page-title-section > form:last-of-type {
+            margin-top: 0;
         }
 
         .page-actions {
@@ -623,9 +636,9 @@ func EditPageHandler(c *gin.Context) {
                         <input type="text" name="title" value="` + page.Title + `" placeholder="Page Title" required>
                         <div class="page-actions">
                             <button type="submit" class="btn">Save Draft</button>
-                            ` + publishButton + `
                         </div>
                     </form>
+                    ` + publishButton + `
                 </div>
             </div>
 
