@@ -51,6 +51,7 @@ type Site struct {
 	Owner     User       `gorm:"foreignKey:OwnerID"`
 	SiteUsers []SiteUser `gorm:"foreignKey:SiteID"`
 	Pages     []Page     `gorm:"foreignKey:SiteID"`
+	MenuItems []MenuItem `gorm:"foreignKey:SiteID"`
 }
 
 // SiteUser represents the many-to-many relationship between users and sites
@@ -97,6 +98,20 @@ type Block struct {
 	Page Page `gorm:"foreignKey:PageID"`
 }
 
+// MenuItem represents a navigation menu item
+type MenuItem struct {
+	ID        uint           `gorm:"primaryKey"`
+	SiteID    uint           `gorm:"not null;index"`
+	Label     string         `gorm:"not null"`        // Display text
+	URL       string         `gorm:"not null"`        // Page slug or external URL
+	Order     int            `gorm:"not null;default:0"` // Display order
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+
+	Site Site `gorm:"foreignKey:SiteID"`
+}
+
 // TableName overrides for consistent naming
 func (User) TableName() string {
 	return "users"
@@ -116,6 +131,10 @@ func (Page) TableName() string {
 
 func (Block) TableName() string {
 	return "blocks"
+}
+
+func (MenuItem) TableName() string {
+	return "menu_items"
 }
 
 // GetAllowedIPs returns the list of allowed IP ranges for this site

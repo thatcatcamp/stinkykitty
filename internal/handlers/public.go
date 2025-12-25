@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"strings"
@@ -12,6 +13,35 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"gorm.io/gorm"
 )
+
+// renderNavigation generates the navigation menu HTML for a site
+func renderNavigation(siteID uint) string {
+	var menuItems []models.MenuItem
+	db.GetDB().Where("site_id = ?", siteID).
+		Order("`order` ASC").
+		Find(&menuItems)
+
+	if len(menuItems) == 0 {
+		return ""
+	}
+
+	var nav strings.Builder
+	nav.WriteString(`<nav class="site-nav">`)
+	nav.WriteString(`<ul>`)
+
+	for _, item := range menuItems {
+		nav.WriteString(fmt.Sprintf(
+			`<li><a href="%s">%s</a></li>`,
+			html.EscapeString(item.URL),
+			html.EscapeString(item.Label),
+		))
+	}
+
+	nav.WriteString(`</ul>`)
+	nav.WriteString(`</nav>`)
+
+	return nav.String()
+}
 
 // ServeHomepage renders the site's homepage
 func ServeHomepage(c *gin.Context) {
@@ -57,6 +87,9 @@ func ServeHomepage(c *gin.Context) {
 		return
 	}
 
+	// Render navigation
+	navigation := renderNavigation(site.ID)
+
 	// Render all blocks
 	var content strings.Builder
 	for _, block := range page.Blocks {
@@ -79,11 +112,25 @@ func ServeHomepage(c *gin.Context) {
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
 	<style>
-		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 0 20px 20px; line-height: 1.6; }
 		.text-block { margin-bottom: 1.5em; }
+
+		/* Navigation styles */
+		.site-nav { background: #f8f9fa; border-bottom: 2px solid #e9ecef; margin: 0 -20px 30px; padding: 0 20px; }
+		.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
+		.site-nav li { margin: 0; }
+		.site-nav a { display: block; padding: 15px 20px; color: #333; text-decoration: none; transition: background-color 0.2s; }
+		.site-nav a:hover { background-color: #e9ecef; }
+
+		/* Mobile responsive */
+		@media (max-width: 600px) {
+			.site-nav ul { flex-direction: column; }
+			.site-nav a { padding: 12px 15px; border-bottom: 1px solid #e9ecef; }
+		}
 	</style>
 </head>
 <body>
+	%s
 	<h1>%s</h1>
 	%s
 	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.9em; color: #666;">
@@ -91,7 +138,7 @@ func ServeHomepage(c *gin.Context) {
 	</footer>
 </body>
 </html>
-`, page.Title, page.Title, content.String())
+`, page.Title, navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -151,6 +198,9 @@ func ServePage(c *gin.Context) {
 		return
 	}
 
+	// Render navigation
+	navigation := renderNavigation(site.ID)
+
 	// Render all blocks
 	var content strings.Builder
 	for _, block := range page.Blocks {
@@ -173,11 +223,25 @@ func ServePage(c *gin.Context) {
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
 	<style>
-		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 0 20px 20px; line-height: 1.6; }
 		.text-block { margin-bottom: 1.5em; }
+
+		/* Navigation styles */
+		.site-nav { background: #f8f9fa; border-bottom: 2px solid #e9ecef; margin: 0 -20px 30px; padding: 0 20px; }
+		.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
+		.site-nav li { margin: 0; }
+		.site-nav a { display: block; padding: 15px 20px; color: #333; text-decoration: none; transition: background-color 0.2s; }
+		.site-nav a:hover { background-color: #e9ecef; }
+
+		/* Mobile responsive */
+		@media (max-width: 600px) {
+			.site-nav ul { flex-direction: column; }
+			.site-nav a { padding: 12px 15px; border-bottom: 1px solid #e9ecef; }
+		}
 	</style>
 </head>
 <body>
+	%s
 	<h1>%s</h1>
 	%s
 	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.9em; color: #666;">
@@ -185,7 +249,7 @@ func ServePage(c *gin.Context) {
 	</footer>
 </body>
 </html>
-`, page.Title, page.Title, content.String())
+`, page.Title, navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }

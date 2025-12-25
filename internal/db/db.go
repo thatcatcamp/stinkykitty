@@ -37,6 +37,7 @@ func InitDB(dbType, dbPath string) error {
 		&models.SiteUser{},
 		&models.Page{},
 		&models.Block{},
+		&models.MenuItem{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}

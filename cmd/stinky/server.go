@@ -65,6 +65,20 @@ var serverStartCmd = &cobra.Command{
 		siteGroup := r.Group("/")
 		siteGroup.Use(middleware.SiteResolutionMiddleware(db.GetDB(), baseDomain))
 		{
+			// Favicon - simple cat SVG
+			siteGroup.GET("/favicon.ico", func(c *gin.Context) {
+				// Simple SVG cat icon
+				svg := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+					<circle cx="50" cy="50" r="40" fill="#ff9800"/>
+					<circle cx="35" cy="45" r="5" fill="#333"/>
+					<circle cx="65" cy="45" r="5" fill="#333"/>
+					<path d="M 35 60 Q 50 70 65 60" stroke="#333" stroke-width="3" fill="none"/>
+					<polygon points="20,30 30,10 35,30" fill="#ff9800"/>
+					<polygon points="80,30 70,10 65,30" fill="#ff9800"/>
+				</svg>`
+				c.Data(200, "image/svg+xml", []byte(svg))
+			})
+
 			// Public content routes
 			siteGroup.GET("/", handlers.ServeHomepage)
 
@@ -106,6 +120,11 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/pages/:id/blocks/:block_id/move-up", handlers.MoveBlockUpHandler)
 					adminGroup.POST("/pages/:id/blocks/:block_id/move-down", handlers.MoveBlockDownHandler)
 					adminGroup.POST("/upload/image", handlers.UploadImageHandler)
+					adminGroup.GET("/menu", handlers.MenuHandler)
+					adminGroup.POST("/menu", handlers.CreateMenuItemHandler)
+					adminGroup.POST("/menu/:id/delete", handlers.DeleteMenuItemHandler)
+					adminGroup.POST("/menu/:id/move-up", handlers.MoveMenuItemUpHandler)
+					adminGroup.POST("/menu/:id/move-down", handlers.MoveMenuItemDownHandler)
 				}
 			}
 		}

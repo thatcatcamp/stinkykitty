@@ -14,6 +14,16 @@ func RenderBlock(blockType string, dataJSON string) (string, error) {
 		return renderTextBlock(dataJSON)
 	case "image":
 		return renderImageBlock(dataJSON)
+	case "heading":
+		return renderHeadingBlock(dataJSON)
+	case "quote":
+		return renderQuoteBlock(dataJSON)
+	case "button":
+		return renderButtonBlock(dataJSON)
+	case "video":
+		return renderVideoBlock(dataJSON)
+	case "spacer":
+		return renderSpacerBlock(dataJSON)
 	default:
 		return "", fmt.Errorf("unknown block type: %s", blockType)
 	}
@@ -69,4 +79,160 @@ func renderImageBlock(dataJSON string) (string, error) {
 	htmlStr += `</div>`
 
 	return htmlStr, nil
+}
+
+// HeadingBlockData represents the JSON structure for heading blocks
+type HeadingBlockData struct {
+	Level int    `json:"level"` // 2-6 for h2-h6
+	Text  string `json:"text"`
+}
+
+// renderHeadingBlock renders a heading block
+func renderHeadingBlock(dataJSON string) (string, error) {
+	var data HeadingBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse heading block data: %w", err)
+	}
+
+	// Default to h2 if level is invalid
+	if data.Level < 2 || data.Level > 6 {
+		data.Level = 2
+	}
+
+	safeText := html.EscapeString(data.Text)
+	return fmt.Sprintf(`<h%d class="heading-block">%s</h%d>`, data.Level, safeText, data.Level), nil
+}
+
+// QuoteBlockData represents the JSON structure for quote blocks
+type QuoteBlockData struct {
+	Quote  string `json:"quote"`
+	Author string `json:"author"`
+}
+
+// renderQuoteBlock renders a quote block
+func renderQuoteBlock(dataJSON string) (string, error) {
+	var data QuoteBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse quote block data: %w", err)
+	}
+
+	safeQuote := html.EscapeString(data.Quote)
+	safeAuthor := html.EscapeString(data.Author)
+
+	htmlStr := `<blockquote class="quote-block" style="border-left: 4px solid #ddd; padding-left: 20px; margin: 1.5em 0; font-style: italic; color: #555;">`
+	htmlStr += fmt.Sprintf(`<p style="margin: 0 0 10px 0; font-size: 1.1em;">%s</p>`, safeQuote)
+
+	if safeAuthor != "" {
+		htmlStr += fmt.Sprintf(`<footer style="font-size: 0.9em; color: #888; font-style: normal;">— %s</footer>`, safeAuthor)
+	}
+
+	htmlStr += `</blockquote>`
+	return htmlStr, nil
+}
+
+// ButtonBlockData represents the JSON structure for button blocks
+type ButtonBlockData struct {
+	Text  string `json:"text"`
+	URL   string `json:"url"`
+	Style string `json:"style"` // "primary" or "secondary"
+}
+
+// renderButtonBlock renders a button/CTA block
+func renderButtonBlock(dataJSON string) (string, error) {
+	var data ButtonBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse button block data: %w", err)
+	}
+
+	safeText := html.EscapeString(data.Text)
+	safeURL := html.EscapeString(data.URL)
+
+	// Choose button color based on style
+	bgColor := "#007bff"
+	if data.Style == "secondary" {
+		bgColor = "#6c757d"
+	}
+
+	return fmt.Sprintf(`<div class="button-block" style="margin: 1.5em 0;">
+		<a href="%s" style="display: inline-block; padding: 12px 24px; background: %s; color: white; text-decoration: none; border-radius: 4px; font-weight: 500; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">%s</a>
+	</div>`, safeURL, bgColor, safeText), nil
+}
+
+// VideoBlockData represents the JSON structure for video blocks
+type VideoBlockData struct {
+	URL string `json:"url"` // YouTube or Vimeo URL
+}
+
+// renderVideoBlock renders a video embed block
+func renderVideoBlock(dataJSON string) (string, error) {
+	var data VideoBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse video block data: %w", err)
+	}
+
+	// Convert YouTube/Vimeo URLs to embed URLs
+	embedURL := convertToEmbedURL(data.URL)
+	if embedURL == "" {
+		return "", fmt.Errorf("invalid video URL: %s", data.URL)
+	}
+
+	return fmt.Sprintf(`<div class="video-block" style="position: relative; padding-bottom: 56.25%%; height: 0; overflow: hidden; margin: 1.5em 0;">
+		<iframe src="%s" style="position: absolute; top: 0; left: 0; width: 100%%; height: 100%%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+	</div>`, embedURL), nil
+}
+
+// convertToEmbedURL converts YouTube/Vimeo URLs to embed format
+func convertToEmbedURL(url string) string {
+	// YouTube patterns
+	if strings.Contains(url, "youtube.com/watch?v=") {
+		parts := strings.Split(url, "v=")
+		if len(parts) == 2 {
+			videoID := strings.Split(parts[1], "&")[0]
+			return "https://www.youtube.com/embed/" + videoID
+		}
+	}
+	if strings.Contains(url, "youtu.be/") {
+		parts := strings.Split(url, "youtu.be/")
+		if len(parts) == 2 {
+			videoID := strings.Split(parts[1], "?")[0]
+			return "https://www.youtube.com/embed/" + videoID
+		}
+	}
+
+	// Vimeo patterns
+	if strings.Contains(url, "vimeo.com/") {
+		parts := strings.Split(url, "vimeo.com/")
+		if len(parts) == 2 {
+			videoID := strings.Split(parts[1], "/")[0]
+			videoID = strings.Split(videoID, "?")[0]
+			return "https://player.vimeo.com/video/" + videoID
+		}
+	}
+
+	// Already an embed URL
+	if strings.Contains(url, "youtube.com/embed/") || strings.Contains(url, "player.vimeo.com/video/") {
+		return url
+	}
+
+	return ""
+}
+
+// SpacerBlockData represents the JSON structure for spacer blocks
+type SpacerBlockData struct {
+	Height int `json:"height"` // Height in pixels
+}
+
+// renderSpacerBlock renders a spacer block
+func renderSpacerBlock(dataJSON string) (string, error) {
+	var data SpacerBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse spacer block data: %w", err)
+	}
+
+	// Default to 40px if not specified or invalid
+	if data.Height <= 0 {
+		data.Height = 40
+	}
+
+	return fmt.Sprintf(`<div class="spacer-block" style="height: %dpx;"></div>`, data.Height), nil
 }

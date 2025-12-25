@@ -43,9 +43,18 @@ func CreateBlockHandler(c *gin.Context) {
 		return
 	}
 
-	// Get block type from POST form (currently only "text" is valid)
+	// Get block type from POST form
 	blockType := c.PostForm("type")
-	if blockType != "text" {
+	validTypes := map[string]bool{
+		"text":    true,
+		"image":   true,
+		"heading": true,
+		"quote":   true,
+		"button":  true,
+		"video":   true,
+		"spacer":  true,
+	}
+	if !validTypes[blockType] {
 		c.String(http.StatusBadRequest, "Invalid block type")
 		return
 	}
@@ -65,12 +74,35 @@ func CreateBlockHandler(c *gin.Context) {
 		nextOrder = *maxOrder.MaxOrder + 1
 	}
 
-	// Create new block with empty Data: {"content":""}
+	// Determine initial data based on block type
+	var blockData string
+	switch blockType {
+	case "text":
+		blockData = `{"content":""}`
+	case "image":
+		blockData = c.PostForm("data")
+		if blockData == "" {
+			c.String(http.StatusBadRequest, "Image block data is required")
+			return
+		}
+	case "heading":
+		blockData = `{"level":2,"text":""}`
+	case "quote":
+		blockData = `{"quote":"","author":""}`
+	case "button":
+		blockData = `{"text":"Click Here","url":"","style":"primary"}`
+	case "video":
+		blockData = `{"url":""}`
+	case "spacer":
+		blockData = `{"height":40}`
+	}
+
+	// Create new block
 	block := models.Block{
 		PageID: uint(pageID),
 		Type:   blockType,
 		Order:  nextOrder,
-		Data:   `{"content":""}`,
+		Data:   blockData,
 	}
 
 	if err := db.GetDB().Create(&block).Error; err != nil {
@@ -78,8 +110,14 @@ func CreateBlockHandler(c *gin.Context) {
 		return
 	}
 
-	// Redirect to /admin/pages/:page_id/blocks/:id/edit for immediate editing
-	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/blocks/"+strconv.Itoa(int(block.ID))+"/edit")
+	// For blocks that need immediate editing, redirect to edit page
+	// For blocks that are ready to use (image, spacer), redirect to page editor
+	needsEditing := blockType != "image" && blockType != "spacer"
+	if needsEditing {
+		c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/blocks/"+strconv.Itoa(int(block.ID))+"/edit")
+	} else {
+		c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
+	}
 }
 
 // EditBlockHandler shows a form to edit a block
@@ -358,6 +396,254 @@ func EditBlockHandler(c *gin.Context) {
     </div>
 </body>
 </html>`, imageData.URL, imageData.Alt, pageIDStr, blockIDStr, imageData.URL, imageData.Alt, imageData.Caption, pageIDStr)
+	} else if block.Type == "heading" {
+		var headingData struct {
+			Level int    `json:"level"`
+			Text  string `json:"text"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &headingData); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse heading data")
+			return
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Heading Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input[type="text"], select { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; }
+        input:focus, select:focus { outline: none; border-color: #2563eb; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Heading Block</h1>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="level">Heading Level:</label>
+            <select id="level" name="level">
+                <option value="2"%s>H2 - Large Heading</option>
+                <option value="3"%s>H3 - Medium Heading</option>
+                <option value="4"%s>H4 - Small Heading</option>
+                <option value="5"%s>H5 - Smaller Heading</option>
+                <option value="6"%s>H6 - Smallest Heading</option>
+            </select>
+            <label for="text">Heading Text:</label>
+            <input type="text" id="text" name="text" value="%s" required>
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr,
+			func() string { if headingData.Level == 2 { return " selected" }; return "" }(),
+			func() string { if headingData.Level == 3 { return " selected" }; return "" }(),
+			func() string { if headingData.Level == 4 { return " selected" }; return "" }(),
+			func() string { if headingData.Level == 5 { return " selected" }; return "" }(),
+			func() string { if headingData.Level == 6 { return " selected" }; return "" }(),
+			headingData.Text, pageIDStr)
+	} else if block.Type == "quote" {
+		var quoteData struct {
+			Quote  string `json:"quote"`
+			Author string `json:"author"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &quoteData); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse quote data")
+			return
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Quote Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        textarea, input[type="text"] { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; font-family: system-ui; }
+        textarea { min-height: 120px; }
+        textarea:focus, input:focus { outline: none; border-color: #2563eb; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Quote Block</h1>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="quote">Quote:</label>
+            <textarea id="quote" name="quote" required>%s</textarea>
+            <label for="author">Author (optional):</label>
+            <input type="text" id="author" name="author" value="%s">
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr, quoteData.Quote, quoteData.Author, pageIDStr)
+	} else if block.Type == "button" {
+		var buttonData struct {
+			Text  string `json:"text"`
+			URL   string `json:"url"`
+			Style string `json:"style"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &buttonData); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse button data")
+			return
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Button Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input[type="text"], select { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; }
+        input:focus, select:focus { outline: none; border-color: #2563eb; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Button Block</h1>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="text">Button Text:</label>
+            <input type="text" id="text" name="text" value="%s" required>
+            <label for="url">Link URL:</label>
+            <input type="text" id="url" name="url" value="%s" required placeholder="https://example.com or /page">
+            <label for="style">Button Style:</label>
+            <select id="style" name="style">
+                <option value="primary"%s>Primary (Blue)</option>
+                <option value="secondary"%s>Secondary (Gray)</option>
+            </select>
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr, buttonData.Text, buttonData.URL,
+			func() string { if buttonData.Style == "primary" { return " selected" }; return "" }(),
+			func() string { if buttonData.Style == "secondary" { return " selected" }; return "" }(),
+			pageIDStr)
+	} else if block.Type == "video" {
+		var videoData struct {
+			URL string `json:"url"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &videoData); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse video data")
+			return
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Video Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input[type="text"] { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; }
+        input:focus { outline: none; border-color: #2563eb; }
+        .help-text { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 15px; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Video Block</h1>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="url">Video URL:</label>
+            <input type="text" id="url" name="url" value="%s" required placeholder="YouTube or Vimeo URL">
+            <p class="help-text">Paste a YouTube or Vimeo video URL (e.g., https://www.youtube.com/watch?v=...)</p>
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr, videoData.URL, pageIDStr)
+	} else if block.Type == "spacer" {
+		var spacerData struct {
+			Height int `json:"height"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &spacerData); err != nil {
+			c.String(http.StatusInternalServerError, "Failed to parse spacer data")
+			return
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Spacer Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input[type="number"] { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; }
+        input:focus { outline: none; border-color: #2563eb; }
+        .help-text { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 15px; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Spacer Block</h1>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="height">Height (pixels):</label>
+            <input type="number" id="height" name="height" value="%d" required min="1" max="500">
+            <p class="help-text">Vertical spacing in pixels (recommended: 20-100)</p>
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr, spacerData.Height, pageIDStr)
+	} else {
+		c.String(http.StatusBadRequest, "Block type '%s' does not support editing yet", block.Type)
+		return
 	}
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
@@ -411,12 +697,25 @@ func UpdateBlockHandler(c *gin.Context) {
 	}
 
 	// Update block data based on type
-	if block.Type == "text" {
+	switch block.Type {
+	case "text":
 		content := c.PostForm("content")
+		data := map[string]string{"content": content}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
 
-		// Update block.Data with JSON: {"content":"..."}
+	case "image":
+		url := c.PostForm("url")
+		alt := c.PostForm("alt")
+		caption := c.PostForm("caption")
 		data := map[string]string{
-			"content": content,
+			"url":     url,
+			"alt":     alt,
+			"caption": caption,
 		}
 		jsonData, err := json.Marshal(data)
 		if err != nil {
@@ -424,17 +723,75 @@ func UpdateBlockHandler(c *gin.Context) {
 			return
 		}
 		block.Data = string(jsonData)
-	} else if block.Type == "image" {
-		url := c.PostForm("url")
-		alt := c.PostForm("alt")
-		caption := c.PostForm("caption")
 
-		// Update block.Data with JSON: {"url":"...", "alt":"...", "caption":"..."}
-		data := map[string]string{
-			"url":     url,
-			"alt":     alt,
-			"caption": caption,
+	case "heading":
+		levelStr := c.PostForm("level")
+		text := c.PostForm("text")
+		level, err := strconv.Atoi(levelStr)
+		if err != nil || level < 2 || level > 6 {
+			level = 2
 		}
+		data := map[string]interface{}{
+			"level": level,
+			"text":  text,
+		}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+
+	case "quote":
+		quote := c.PostForm("quote")
+		author := c.PostForm("author")
+		data := map[string]string{
+			"quote":  quote,
+			"author": author,
+		}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+
+	case "button":
+		text := c.PostForm("text")
+		url := c.PostForm("url")
+		style := c.PostForm("style")
+		if style != "primary" && style != "secondary" {
+			style = "primary"
+		}
+		data := map[string]string{
+			"text":  text,
+			"url":   url,
+			"style": style,
+		}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+
+	case "video":
+		url := c.PostForm("url")
+		data := map[string]string{"url": url}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+
+	case "spacer":
+		heightStr := c.PostForm("height")
+		height, err := strconv.Atoi(heightStr)
+		if err != nil || height < 1 || height > 500 {
+			height = 40
+		}
+		data := map[string]int{"height": height}
 		jsonData, err := json.Marshal(data)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to encode block data")

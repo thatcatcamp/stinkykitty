@@ -265,6 +265,7 @@ func DashboardHandler(c *gin.Context) {
             ` + pagesList.String() + `
             <div style="margin-top: 15px;">
                 <a href="/admin/pages/new" class="btn">+ Create New Page</a>
+                <a href="/admin/menu" class="btn" style="background: #17a2b8; margin-left: 10px;">Navigation Menu</a>
             </div>
         </div>
 
