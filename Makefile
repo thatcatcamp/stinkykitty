@@ -2,11 +2,11 @@
 
 # Build for current platform
 build:
-	CGO_ENABLED=1 go build -o stinky cmd/stinky/*.go
+	CGO_ENABLED=1 go build -o stinky ./cmd/stinky
 
 # Build for Linux (for VPS deployment)
 build-linux:
-	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o stinky cmd/stinky/*.go
+	CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o stinky ./cmd/stinky
 
 # Install to /usr/bin (requires sudo)
 install: build
