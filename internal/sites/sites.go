@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"gorm.io/gorm"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
+	"gorm.io/gorm"
 )
 
 // CreateSite creates a new site with the given subdomain and owner

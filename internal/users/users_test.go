@@ -3,9 +3,9 @@ package users
 import (
 	"testing"
 
+	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {

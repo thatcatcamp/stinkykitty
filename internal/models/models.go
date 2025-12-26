@@ -10,10 +10,10 @@ import (
 
 // User represents a global user account
 type User struct {
-	ID            uint           `gorm:"primaryKey"`
-	Email         string         `gorm:"uniqueIndex;not null"`
-	PasswordHash  string         `gorm:"not null"`
-	IsGlobalAdmin bool           `gorm:"default:false"`
+	ID            uint   `gorm:"primaryKey"`
+	Email         string `gorm:"uniqueIndex;not null"`
+	PasswordHash  string `gorm:"not null"`
+	IsGlobalAdmin bool   `gorm:"default:false"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     gorm.DeletedAt `gorm:"index"`
@@ -25,27 +25,27 @@ type User struct {
 
 // Site represents a camp website
 type Site struct {
-	ID            uint           `gorm:"primaryKey"`
-	Subdomain     string         `gorm:"uniqueIndex"`
-	CustomDomain  *string        `gorm:"uniqueIndex"`
-	OwnerID       uint           `gorm:"not null"`
-	SiteDir       string         `gorm:"not null"` // Directory path for this site
-	DatabaseType  string         `gorm:"default:sqlite"` // "sqlite" or "mariadb"
-	DatabasePath  string         // For SQLite
-	DatabaseHost  string         // For MariaDB
-	DatabaseName  string         // For MariaDB
-	StorageType   string         `gorm:"default:local"` // "local" or "s3"
-	S3Bucket      string         // For S3 storage
-	PrimaryColor  string         `gorm:"default:#2563eb"`
-	SecondaryColor string        `gorm:"default:#64748b"`
-	SiteTitle     string
-	SiteTagline   string
-	LogoPath      string
-	FontPair      string         `gorm:"default:system"`
-	AllowedIPs    string         `gorm:"type:text"` // JSON array of CIDR ranges
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	ID             uint    `gorm:"primaryKey"`
+	Subdomain      string  `gorm:"uniqueIndex"`
+	CustomDomain   *string `gorm:"uniqueIndex"`
+	OwnerID        uint    `gorm:"not null"`
+	SiteDir        string  `gorm:"not null"`       // Directory path for this site
+	DatabaseType   string  `gorm:"default:sqlite"` // "sqlite" or "mariadb"
+	DatabasePath   string  // For SQLite
+	DatabaseHost   string  // For MariaDB
+	DatabaseName   string  // For MariaDB
+	StorageType    string  `gorm:"default:local"` // "local" or "s3"
+	S3Bucket       string  // For S3 storage
+	PrimaryColor   string  `gorm:"default:#2563eb"`
+	SecondaryColor string  `gorm:"default:#64748b"`
+	SiteTitle      string
+	SiteTagline    string
+	LogoPath       string
+	FontPair       string `gorm:"default:system"`
+	AllowedIPs     string `gorm:"type:text"` // JSON array of CIDR ranges
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DeletedAt      gorm.DeletedAt `gorm:"index"`
 
 	// Relationships
 	Owner     User       `gorm:"foreignKey:OwnerID"`
@@ -56,10 +56,10 @@ type Site struct {
 
 // SiteUser represents the many-to-many relationship between users and sites
 type SiteUser struct {
-	ID        uint           `gorm:"primaryKey"`
-	UserID    uint           `gorm:"uniqueIndex:idx_user_site;not null"`
-	SiteID    uint           `gorm:"uniqueIndex:idx_user_site;not null"`
-	Role      string         `gorm:"not null"` // "owner", "admin", "editor"
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"uniqueIndex:idx_user_site;not null"`
+	SiteID    uint   `gorm:"uniqueIndex:idx_user_site;not null"`
+	Role      string `gorm:"not null"` // "owner", "admin", "editor"
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -71,11 +71,11 @@ type SiteUser struct {
 
 // Page represents a content page on a site
 type Page struct {
-	ID        uint           `gorm:"primaryKey"`
-	SiteID    uint           `gorm:"not null;index:idx_site_slug,unique"`
-	Slug      string         `gorm:"not null;index:idx_site_slug,unique"` // "/" for homepage, "/about", etc
-	Title     string         `gorm:"not null"`
-	Published bool           `gorm:"default:false"`
+	ID        uint   `gorm:"primaryKey"`
+	SiteID    uint   `gorm:"not null;index:idx_site_slug,unique"`
+	Slug      string `gorm:"not null;index:idx_site_slug,unique"` // "/" for homepage, "/about", etc
+	Title     string `gorm:"not null"`
+	Published bool   `gorm:"default:false"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -86,11 +86,11 @@ type Page struct {
 
 // Block represents a content block on a page
 type Block struct {
-	ID        uint           `gorm:"primaryKey"`
-	PageID    uint           `gorm:"not null;index"`
-	Type      string         `gorm:"not null"` // "text", "hero", "gallery", etc
-	Order     int            `gorm:"not null;default:0"`
-	Data      string         `gorm:"type:text"` // JSON blob with block-specific content
+	ID        uint   `gorm:"primaryKey"`
+	PageID    uint   `gorm:"not null;index"`
+	Type      string `gorm:"not null"` // "text", "hero", "gallery", etc
+	Order     int    `gorm:"not null;default:0"`
+	Data      string `gorm:"type:text"` // JSON blob with block-specific content
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
@@ -100,11 +100,11 @@ type Block struct {
 
 // MenuItem represents a navigation menu item
 type MenuItem struct {
-	ID        uint           `gorm:"primaryKey"`
-	SiteID    uint           `gorm:"not null;index"`
-	Label     string         `gorm:"not null"`        // Display text
-	URL       string         `gorm:"not null"`        // Page slug or external URL
-	Order     int            `gorm:"not null;default:0"` // Display order
+	ID        uint   `gorm:"primaryKey"`
+	SiteID    uint   `gorm:"not null;index"`
+	Label     string `gorm:"not null"`           // Display text
+	URL       string `gorm:"not null"`           // Page slug or external URL
+	Order     int    `gorm:"not null;default:0"` // Display order
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`

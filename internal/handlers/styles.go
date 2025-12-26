@@ -2,16 +2,16 @@ package handlers
 
 const (
 	// Color Palette
-	ColorBgPrimary   = "#FAFAF8"   // Cream background
-	ColorBgCard      = "#FFFFFF"   // White card
-	ColorTextPrimary = "#2D2D2D"   // Dark charcoal
-	ColorTextSecond  = "#6B7280"   // Light gray
-	ColorAccent      = "#2E8B9E"   // Teal accent
-	ColorAccentHover = "#1E6F7F"   // Darker teal
-	ColorSuccess     = "#10B981"   // Green (published)
-	ColorWarning     = "#F59E0B"   // Amber (draft)
-	ColorDanger      = "#EF4444"   // Red (delete)
-	ColorBorder      = "#E5E5E3"   // Subtle border
+	ColorBgPrimary   = "#FAFAF8" // Cream background
+	ColorBgCard      = "#FFFFFF" // White card
+	ColorTextPrimary = "#2D2D2D" // Dark charcoal
+	ColorTextSecond  = "#6B7280" // Light gray
+	ColorAccent      = "#2E8B9E" // Teal accent
+	ColorAccentHover = "#1E6F7F" // Darker teal
+	ColorSuccess     = "#10B981" // Green (published)
+	ColorWarning     = "#F59E0B" // Amber (draft)
+	ColorDanger      = "#EF4444" // Red (delete)
+	ColorBorder      = "#E5E5E3" // Subtle border
 )
 
 // Returns full stylesheet with CSS variables and base styles

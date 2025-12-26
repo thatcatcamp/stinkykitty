@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/sites"
+	"gorm.io/gorm"
 )
 
 // CacheEntry represents a cached site with expiration
@@ -18,8 +18,8 @@ type CacheEntry struct {
 }
 
 var (
-	siteCache   sync.Map
-	cacheTTL    = 60 * time.Second
+	siteCache sync.Map
+	cacheTTL  = 60 * time.Second
 )
 
 // SiteResolutionMiddleware resolves the site based on Host header

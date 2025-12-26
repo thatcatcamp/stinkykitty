@@ -3,9 +3,9 @@ package users
 import (
 	"fmt"
 
+	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
 // CreateUser creates a new user with hashed password

@@ -3,10 +3,10 @@ package db
 import (
 	"fmt"
 
+	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
 var DB *gorm.DB

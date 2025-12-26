@@ -7,15 +7,15 @@ import (
 	"log"
 
 	"github.com/caddyserver/certmagic"
-	"gorm.io/gorm"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
+	"gorm.io/gorm"
 )
 
 // Manager handles certificate provisioning and management
 type Manager struct {
-	cfg         *Config
-	db          *gorm.DB
-	certmagic   *certmagic.Config
+	cfg       *Config
+	db        *gorm.DB
+	certmagic *certmagic.Config
 }
 
 // NewManager creates a new TLS manager

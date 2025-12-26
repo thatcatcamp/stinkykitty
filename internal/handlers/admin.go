@@ -75,13 +75,13 @@ func LoginHandler(c *gin.Context) {
 
 	// Set HTTP-only cookie
 	c.SetCookie(
-		"stinky_token",        // name
-		token,                 // value
-		28800,                 // max age (8 hours in seconds)
-		"/",                   // path
-		"",                    // domain (empty = current domain)
-		false,                 // secure (set to true in production with HTTPS)
-		true,                  // httpOnly
+		"stinky_token", // name
+		token,          // value
+		28800,          // max age (8 hours in seconds)
+		"/",            // path
+		"",             // domain (empty = current domain)
+		false,          // secure (set to true in production with HTTPS)
+		true,           // httpOnly
 	)
 
 	// Redirect to dashboard
@@ -94,7 +94,7 @@ func LogoutHandler(c *gin.Context) {
 	c.SetCookie(
 		"stinky_token",
 		"",
-		-1,     // max age -1 deletes the cookie
+		-1, // max age -1 deletes the cookie
 		"/",
 		"",
 		false,

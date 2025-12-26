@@ -58,10 +58,10 @@ func setDefaults() {
 
 	// Backup defaults
 	v.SetDefault("backups.path", "/var/lib/stinkykitty/backups")
-	v.SetDefault("backups.interval", "24h")        // Daily backups
-	v.SetDefault("backups.retention", 10)          // Keep last 10 backups
+	v.SetDefault("backups.interval", "24h")          // Daily backups
+	v.SetDefault("backups.retention", 10)            // Keep last 10 backups
 	v.SetDefault("backups.enable_auto_backup", true) // Enabled by default
-	v.SetDefault("backups.schedule", "0 3 * * *") // 3am daily (cron format)
+	v.SetDefault("backups.schedule", "0 3 * * *")    // 3am daily (cron format)
 	v.SetDefault("backups.retention.daily", 7)
 	v.SetDefault("backups.retention.weekly", 4)
 	v.SetDefault("backups.retention.monthly", 12)

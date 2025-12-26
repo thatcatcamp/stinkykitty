@@ -447,11 +447,36 @@ func EditBlockHandler(c *gin.Context) {
     </div>
 </body>
 </html>`, pageIDStr, blockIDStr,
-			func() string { if headingData.Level == 2 { return " selected" }; return "" }(),
-			func() string { if headingData.Level == 3 { return " selected" }; return "" }(),
-			func() string { if headingData.Level == 4 { return " selected" }; return "" }(),
-			func() string { if headingData.Level == 5 { return " selected" }; return "" }(),
-			func() string { if headingData.Level == 6 { return " selected" }; return "" }(),
+			func() string {
+				if headingData.Level == 2 {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if headingData.Level == 3 {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if headingData.Level == 4 {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if headingData.Level == 5 {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if headingData.Level == 6 {
+					return " selected"
+				}
+				return ""
+			}(),
 			headingData.Text, pageIDStr)
 	} else if block.Type == "quote" {
 		var quoteData struct {
@@ -550,8 +575,18 @@ func EditBlockHandler(c *gin.Context) {
     </div>
 </body>
 </html>`, pageIDStr, blockIDStr, buttonData.Text, buttonData.URL,
-			func() string { if buttonData.Style == "primary" { return " selected" }; return "" }(),
-			func() string { if buttonData.Style == "secondary" { return " selected" }; return "" }(),
+			func() string {
+				if buttonData.Style == "primary" {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if buttonData.Style == "secondary" {
+					return " selected"
+				}
+				return ""
+			}(),
 			pageIDStr)
 	} else if block.Type == "video" {
 		var videoData struct {
