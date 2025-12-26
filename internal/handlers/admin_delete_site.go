@@ -12,6 +12,8 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/sites"
 )
 
+var _ = sites.DeleteSite // keep import
+
 // DeleteSiteHandler handles soft-delete of a site
 func DeleteSiteHandler(c *gin.Context) {
 	// Get user from context
@@ -36,8 +38,9 @@ func DeleteSiteHandler(c *gin.Context) {
 	}
 
 	// Verify user is owner/admin of site
-	site, err := sites.GetSiteByID(db.GetDB(), uint(siteID))
-	if err != nil {
+	// Use Unscoped to find the site even if already soft-deleted
+	var site models.Site
+	if err := db.GetDB().Unscoped().First(&site, uint(siteID)).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
 		return
 	}
