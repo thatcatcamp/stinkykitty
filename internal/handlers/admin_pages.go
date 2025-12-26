@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
+	"github.com/thatcatcamp/stinkykitty/internal/search"
 	"gorm.io/gorm"
 )
 
@@ -180,6 +181,12 @@ func CreatePageHandler(c *gin.Context) {
 	if err := db.GetDB().Create(&page).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to create page")
 		return
+	}
+
+	// Index the page in FTS (won't be searchable until published)
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to index page %d: %v\n", page.ID, err)
 	}
 
 	// Redirect to edit page
@@ -729,6 +736,12 @@ func UpdatePageHandler(c *gin.Context) {
 		return
 	}
 
+	// Re-index the page in FTS
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to index page %d: %v\n", page.ID, err)
+	}
+
 	// Redirect back to page editor
 	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
 }
@@ -772,6 +785,12 @@ func PublishPageHandler(c *gin.Context) {
 		return
 	}
 
+	// Index the page in FTS (now it's searchable)
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to index page %d: %v\n", page.ID, err)
+	}
+
 	// Redirect back to page editor
 	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
 }
@@ -813,6 +832,12 @@ func UnpublishPageHandler(c *gin.Context) {
 	if err := db.GetDB().Save(&page).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to unpublish page")
 		return
+	}
+
+	// Remove from FTS index (no longer searchable)
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to update index for page %d: %v\n", page.ID, err)
 	}
 
 	// Redirect back to page editor
@@ -861,6 +886,12 @@ func DeletePageHandler(c *gin.Context) {
 	if err := db.GetDB().Delete(&page).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to delete page")
 		return
+	}
+
+	// Remove from FTS index
+	if err := search.RemovePageFromIndex(db.GetDB(), page.ID); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to remove page %d from index: %v\n", page.ID, err)
 	}
 
 	// Redirect back to dashboard
@@ -1341,6 +1372,7 @@ func PagesListHandler(c *gin.Context) {
                 <div style="margin-top: 15px;">
                     <a href="/admin/pages/new" class="btn">+ Create New Page</a>
                     <a href="/admin/menu" class="btn" style="background: #17a2b8; margin-left: 10px;">Navigation Menu</a>
+                    <a href="/admin/settings" class="btn" style="background: #6366f1; margin-left: 10px;">Theme Settings</a>
                     <a href="/admin/export?site=` + fmt.Sprintf("%d", site.ID) + `" class="btn" style="background: #10b981; margin-left: 10px;">Download Site</a>
                 </div>
             </div>

@@ -45,6 +45,35 @@ func InitDB(dbType, dbPath string) error {
 	return nil
 }
 
+// InitFTSIndex initializes the FTS5 search index
+// Note: Must be called separately after InitDB, and only for SQLite databases
+func InitFTSIndex() error {
+	if DB == nil {
+		return fmt.Errorf("database not initialized")
+	}
+
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get sql.DB: %w", err)
+	}
+
+	// Create FTS5 virtual table
+	_, err = sqlDB.Exec(`
+		CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
+			page_id UNINDEXED,
+			site_id UNINDEXED,
+			title,
+			content,
+			tokenize='porter unicode61'
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create FTS index: %w", err)
+	}
+
+	return nil
+}
+
 // GetDB returns the database connection
 func GetDB() *gorm.DB {
 	return DB

@@ -2,16 +2,16 @@ package themes
 
 // Colors represents all generated colors for a theme
 type Colors struct {
-	Primary      string // Main brand color
-	Secondary    string // Accent/highlight color
-	Background   string // Page background
-	Surface      string // Card/container background
-	Text         string // Main text color
-	TextMuted    string // Secondary/muted text
-	Border       string // Border/divider color
-	Success      string // Success state color
-	Error        string // Error state color
-	Warning      string // Warning state color
+	Primary    string // Main brand color
+	Secondary  string // Accent/highlight color
+	Background string // Page background
+	Surface    string // Card/container background
+	Text       string // Main text color
+	TextMuted  string // Secondary/muted text
+	Border     string // Border/divider color
+	Success    string // Success state color
+	Error      string // Error state color
+	Warning    string // Warning state color
 }
 
 // GenerateColors generates full color set from palette for light or dark mode

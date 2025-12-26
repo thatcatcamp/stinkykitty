@@ -1,8 +1,8 @@
 package themes
 
 import (
-	"testing"
 	"strings"
+	"testing"
 )
 
 func TestPaletteExists(t *testing.T) {
@@ -62,11 +62,11 @@ func TestGeneratedColorsAreHex(t *testing.T) {
 	colors := GenerateColors(palette, false)
 
 	colorMap := map[string]string{
-		"Primary": colors.Primary,
-		"Secondary": colors.Secondary,
+		"Primary":    colors.Primary,
+		"Secondary":  colors.Secondary,
 		"Background": colors.Background,
-		"Surface": colors.Surface,
-		"Text": colors.Text,
+		"Surface":    colors.Surface,
+		"Text":       colors.Text,
 	}
 
 	for name, color := range colorMap {
