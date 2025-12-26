@@ -203,12 +203,30 @@ func EditPageHandler(c *gin.Context) {
 	}
 	user := userVal.(*models.User)
 
+	var site *models.Site
 	siteVal, exists := c.Get("site")
-	if !exists {
+	if exists {
+		site = siteVal.(*models.Site)
+	}
+
+	// Try to get site from query parameter if needed (for redirects after creation)
+	if site == nil {
+		siteIDStr := c.Query("site")
+		if siteIDStr != "" {
+			var siteID uint
+			if _, err := fmt.Sscanf(siteIDStr, "%d", &siteID); err == nil {
+				var queriedSite models.Site
+				if err := db.GetDB().First(&queriedSite, siteID).Error; err == nil {
+					site = &queriedSite
+				}
+			}
+		}
+	}
+
+	if site == nil {
 		c.String(http.StatusInternalServerError, "Site not found")
 		return
 	}
-	site := siteVal.(*models.Site)
 
 	// Get page ID from URL
 	pageIDStr := c.Param("id")
