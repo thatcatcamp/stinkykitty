@@ -1,6 +1,7 @@
 package sites
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/thatcatcamp/stinkykitty/internal/models"
@@ -36,6 +37,27 @@ func TestCreateSite(t *testing.T) {
 
 	if site.OwnerID != owner.ID {
 		t.Errorf("Expected owner ID %d, got %d", owner.ID, site.OwnerID)
+	}
+
+	// Verify homepage was created
+	var homepage models.Page
+	if err := db.Where("site_id = ? AND slug = ?", site.ID, "/").First(&homepage).Error; err != nil {
+		t.Fatalf("Homepage not found: %v", err)
+	}
+	if homepage.Title != "Hello World!" {
+		t.Fatalf("Homepage title should be 'Hello World!', got %s", homepage.Title)
+	}
+	if !homepage.Published {
+		t.Fatal("Homepage should be published")
+	}
+
+	// Verify welcome block was created
+	var block models.Block
+	if err := db.Where("page_id = ? AND type = ?", homepage.ID, "text").First(&block).Error; err != nil {
+		t.Fatalf("Welcome block not found: %v", err)
+	}
+	if !strings.Contains(block.Data, "Welcome to your new camp") {
+		t.Fatalf("Block should contain welcome message, got: %s", block.Data)
 	}
 }
 

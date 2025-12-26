@@ -8,6 +8,13 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	DefaultHomepageSlug   = "/"
+	DefaultHomepageTitle  = "Hello World!"
+	DefaultWelcomeMessage = "Welcome to your new camp! Edit this page to get started."
+	BlockTypeText         = "text"
+)
+
 // CreateSite creates a new site with the given subdomain and owner
 func CreateSite(db *gorm.DB, subdomain string, ownerID uint, sitesDir string) (*models.Site, error) {
 	// Check if subdomain already exists
@@ -45,15 +52,26 @@ func CreateSite(db *gorm.DB, subdomain string, ownerID uint, sitesDir string) (*
 		return nil, fmt.Errorf("failed to add owner to site: %w", err)
 	}
 
-	// Auto-create homepage for new site
+	// Auto-create published homepage for new site
 	homepage := &models.Page{
 		SiteID:    site.ID,
-		Slug:      "/",
-		Title:     subdomain,
-		Published: false,
+		Slug:      DefaultHomepageSlug,
+		Title:     DefaultHomepageTitle,
+		Published: true, // Make immediately visible
 	}
 	if err := db.Create(homepage).Error; err != nil {
 		return nil, fmt.Errorf("failed to create homepage: %w", err)
+	}
+
+	// Add a text block to homepage
+	helloBlock := &models.Block{
+		PageID: homepage.ID,
+		Type:   BlockTypeText,
+		Order:  0,
+		Data:   `{"content":"<p>` + DefaultWelcomeMessage + `</p>"}`,
+	}
+	if err := db.Create(helloBlock).Error; err != nil {
+		return nil, fmt.Errorf("failed to create homepage block: %w", err)
 	}
 
 	return site, nil
