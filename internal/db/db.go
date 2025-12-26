@@ -58,13 +58,14 @@ func InitFTSIndex() error {
 	}
 
 	// Create FTS5 virtual table
+	// Note: We use default tokenizer instead of 'porter unicode61' for better
+	// compatibility with SQLite builds that don't have the porter extension
 	_, err = sqlDB.Exec(`
 		CREATE VIRTUAL TABLE IF NOT EXISTS pages_fts USING fts5(
 			page_id UNINDEXED,
 			site_id UNINDEXED,
 			title,
-			content,
-			tokenize='porter unicode61'
+			content
 		)
 	`)
 	if err != nil {
