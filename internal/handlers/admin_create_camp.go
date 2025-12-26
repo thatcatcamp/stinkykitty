@@ -292,16 +292,15 @@ func createCampStep2(c *gin.Context) {
 	var users []struct {
 		ID    uint
 		Email string
-		Name  string
 	}
-	if err := db.GetDB().Model(&models.User{}).Select("id, email, name").Find(&users).Error; err != nil {
+	if err := db.GetDB().Model(&models.User{}).Select("id, email").Find(&users).Error; err != nil {
 		c.String(http.StatusInternalServerError, "failed to load users")
 		return
 	}
 
 	usersHTML := `<option value="">-- Create New User --</option>`
 	for _, u := range users {
-		usersHTML += `<option value="` + fmt.Sprintf("%d", u.ID) + `">` + html.EscapeString(u.Email) + ` (` + html.EscapeString(u.Name) + `)</option>`
+		usersHTML += `<option value="` + fmt.Sprintf("%d", u.ID) + `">` + html.EscapeString(u.Email) + `</option>`
 	}
 
 	html := `<!DOCTYPE html>
