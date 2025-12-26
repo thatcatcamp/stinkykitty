@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
+	"github.com/thatcatcamp/stinkykitty/internal/backup"
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/handlers"
@@ -36,6 +38,20 @@ var serverStartCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+
+		// Initialize backup scheduler
+		backupPath := "/var/lib/stinkykitty/backups"
+		backupManager := backup.NewBackupManager(backupPath)
+		scheduler := backup.NewScheduler(backupManager)
+
+		// Start scheduler in background
+		schedulerDone := scheduler.Start()
+		log.Println("Backup scheduler started")
+
+		// TODO: Integrate graceful shutdown to stop scheduler
+		// When server is shutting down, call: scheduler.Stop()
+		// And wait for: <-schedulerDone
+		_ = schedulerDone // Prevent unused variable error
 
 		// Create Gin router
 		r := gin.Default()
