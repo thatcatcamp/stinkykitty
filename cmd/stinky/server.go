@@ -156,6 +156,8 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.DELETE("/sites/:id/delete", handlers.DeleteSiteHandler)
 					// Create camp form
 					adminGroup.GET("/create-camp", handlers.CreateCampFormHandler)
+					// API endpoints
+					adminGroup.GET("/api/subdomain-check", handlers.SubdomainCheckHandler)
 				}
 			}
 		}
