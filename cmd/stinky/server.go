@@ -102,6 +102,9 @@ var serverStartCmd = &cobra.Command{
 			// Public content routes
 			siteGroup.GET("/", handlers.ServeHomepage)
 
+			// Search endpoint
+			siteGroup.GET("/search", handlers.SearchHandler)
+
 			// Static file serving for uploads (site-specific)
 			siteGroup.GET("/uploads/*filepath", handlers.ServeUploadedFile)
 
@@ -146,6 +149,8 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/menu/:id/delete", handlers.DeleteMenuItemHandler)
 					adminGroup.POST("/menu/:id/move-up", handlers.MoveMenuItemUpHandler)
 					adminGroup.POST("/menu/:id/move-down", handlers.MoveMenuItemDownHandler)
+					adminGroup.GET("/settings", handlers.AdminSettingsHandler)
+					adminGroup.POST("/settings", handlers.AdminSettingsSaveHandler)
 					adminGroup.GET("/export", handlers.ExportSiteHandler(db.GetDB()))
 				}
 			}

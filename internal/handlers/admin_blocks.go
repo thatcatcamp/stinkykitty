@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
+	"github.com/thatcatcamp/stinkykitty/internal/search"
 )
 
 // CreateBlockHandler creates a new block for a page
@@ -108,6 +109,12 @@ func CreateBlockHandler(c *gin.Context) {
 	if err := db.GetDB().Create(&block).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to create block")
 		return
+	}
+
+	// Re-index the page in FTS
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to index page %d: %v\n", page.ID, err)
 	}
 
 	// For blocks that need immediate editing, redirect to edit page
@@ -841,6 +848,12 @@ func UpdateBlockHandler(c *gin.Context) {
 		return
 	}
 
+	// Re-index the page in FTS
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to index page %d: %v\n", page.ID, err)
+	}
+
 	// Redirect back to page editor
 	c.Redirect(http.StatusFound, "/admin/pages/"+pageIDStr+"/edit")
 }
@@ -896,6 +909,12 @@ func DeleteBlockHandler(c *gin.Context) {
 	if err := db.GetDB().Delete(&block).Error; err != nil {
 		c.String(http.StatusInternalServerError, "Failed to delete block")
 		return
+	}
+
+	// Re-index the page in FTS
+	if err := search.IndexPage(db.GetDB(), &page); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Warning: Failed to index page %d: %v\n", page.ID, err)
 	}
 
 	// Redirect back to page editor

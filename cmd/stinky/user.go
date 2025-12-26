@@ -116,5 +116,16 @@ func initSystemDB() error {
 	dbType := config.GetString("database.type")
 	dbPath := config.GetString("database.path")
 
-	return db.InitDB(dbType, dbPath)
+	if err := db.InitDB(dbType, dbPath); err != nil {
+		return err
+	}
+
+	// Initialize FTS index for SQLite databases
+	if dbType == "sqlite" {
+		if err := db.InitFTSIndex(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

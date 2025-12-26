@@ -131,15 +131,30 @@ func ServeHomepage(c *gin.Context) {
 		.site-nav a { display: block; padding: 15px 20px; text-decoration: none; transition: background-color 0.2s; }
 		.site-nav a:hover { opacity: 0.8; }
 
+		/* Search bar styles */
+		.search-bar { margin: 30px 0; }
+		.search-bar form { display: flex; gap: 10px; }
+		.search-bar input[type="text"] { flex: 1; padding: 10px; border: 1px solid var(--color-border); border-radius: 4px; font-size: 16px; }
+		.search-bar button { padding: 10px 20px; background: var(--color-primary); color: var(--color-bg); border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+		.search-bar button:hover { opacity: 0.9; }
+
 		/* Mobile responsive */
 		@media (max-width: 600px) {
 			.site-nav ul { flex-direction: column; }
 			.site-nav a { padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
+			.search-bar form { flex-direction: column; }
+			.search-bar button { width: 100%%; }
 		}
 	</style>
 </head>
 <body>
 	%s
+	<div class="search-bar">
+		<form action="/search" method="GET">
+			<input type="text" name="q" placeholder="Search pages..." required>
+			<button type="submit">Search</button>
+		</form>
+	</div>
 	<h1>%s</h1>
 	%s
 	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
@@ -249,15 +264,30 @@ func ServePage(c *gin.Context) {
 		.site-nav a { display: block; padding: 15px 20px; text-decoration: none; transition: background-color 0.2s; }
 		.site-nav a:hover { opacity: 0.8; }
 
+		/* Search bar styles */
+		.search-bar { margin: 30px 0; }
+		.search-bar form { display: flex; gap: 10px; }
+		.search-bar input[type="text"] { flex: 1; padding: 10px; border: 1px solid var(--color-border); border-radius: 4px; font-size: 16px; }
+		.search-bar button { padding: 10px 20px; background: var(--color-primary); color: var(--color-bg); border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+		.search-bar button:hover { opacity: 0.9; }
+
 		/* Mobile responsive */
 		@media (max-width: 600px) {
 			.site-nav ul { flex-direction: column; }
 			.site-nav a { padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
+			.search-bar form { flex-direction: column; }
+			.search-bar button { width: 100%%; }
 		}
 	</style>
 </head>
 <body>
 	%s
+	<div class="search-bar">
+		<form action="/search" method="GET">
+			<input type="text" name="q" placeholder="Search pages..." required>
+			<button type="submit">Search</button>
+		</form>
+	</div>
 	<h1>%s</h1>
 	%s
 	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
