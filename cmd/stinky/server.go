@@ -152,6 +152,8 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.GET("/settings", handlers.AdminSettingsHandler)
 					adminGroup.POST("/settings", handlers.AdminSettingsSaveHandler)
 					adminGroup.GET("/export", handlers.ExportSiteHandler(db.GetDB()))
+					// Delete site (owner/admin only)
+					adminGroup.POST("/sites/:id/delete", handlers.DeleteSiteHandler)
 				}
 			}
 		}
