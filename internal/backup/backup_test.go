@@ -91,8 +91,10 @@ func TestRestoreBackup(t *testing.T) {
 	// Setup: create a temporary directory structure
 	tmpDir := t.TempDir()
 	manager := NewBackupManager(tmpDir)
+	// Override BasePath for testing to avoid permission issues
+	manager.BasePath = tmpDir
 
-	// Create test media files in the standard location that CreateBackup expects
+	// Create test media files
 	testMediaDir := filepath.Join(tmpDir, "test-media")
 	if err := os.MkdirAll(testMediaDir, 0755); err != nil {
 		t.Fatalf("failed to create test media directory: %v", err)
@@ -113,17 +115,14 @@ func TestRestoreBackup(t *testing.T) {
 		t.Fatalf("failed to create test backup: %v", err)
 	}
 
-	// Create a restore destination directory
-	restoreDir := filepath.Join(tmpDir, "restore")
-
-	// Test restore operation
-	err := manager.RestoreBackup(backupFilename, restoreDir)
+	// Test restore operation - now uses single parameter
+	err := manager.RestoreBackup(backupFilename)
 	if err != nil {
 		t.Fatalf("RestoreBackup failed: %v", err)
 	}
 
 	// Verify the uploads directory was created
-	uploadsDir := filepath.Join(restoreDir, "uploads")
+	uploadsDir := filepath.Join(tmpDir, "uploads")
 	if _, err := os.Stat(uploadsDir); os.IsNotExist(err) {
 		t.Errorf("uploads directory not created at: %s", uploadsDir)
 	}
@@ -138,10 +137,9 @@ func TestRestoreBackup(t *testing.T) {
 func TestRestoreBackupFileNotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 	manager := NewBackupManager(tmpDir)
-	restoreDir := filepath.Join(tmpDir, "restore")
 
-	// Test with non-existent backup file
-	err := manager.RestoreBackup("nonexistent-backup.tar.gz", restoreDir)
+	// Test with non-existent backup file - now uses single parameter
+	err := manager.RestoreBackup("nonexistent-backup.tar.gz")
 	if err == nil {
 		t.Fatal("expected error for non-existent backup file, got nil")
 	}
@@ -154,6 +152,8 @@ func TestRestoreBackupExtractsFiles(t *testing.T) {
 	// Setup
 	tmpDir := t.TempDir()
 	manager := NewBackupManager(tmpDir)
+	// Override BasePath for testing to avoid permission issues
+	manager.BasePath = tmpDir
 
 	// Create test media directory with files
 	testMediaDir := filepath.Join(tmpDir, "source-media")
@@ -186,16 +186,16 @@ func TestRestoreBackupExtractsFiles(t *testing.T) {
 		t.Fatalf("failed to create test backup: %v", err)
 	}
 
-	// Test restore
-	restoreDir := filepath.Join(tmpDir, "restore")
-	err := manager.RestoreBackup(backupFilename, restoreDir)
+	// Test restore - now uses single parameter
+	err := manager.RestoreBackup(backupFilename)
 	if err != nil {
 		t.Fatalf("RestoreBackup failed: %v", err)
 	}
 
 	// Verify files were extracted
+	uploadsDir := filepath.Join(tmpDir, "uploads")
 	for path, expectedContent := range testFiles {
-		restoredPath := filepath.Join(restoreDir, "uploads", path)
+		restoredPath := filepath.Join(uploadsDir, path)
 		content, err := os.ReadFile(restoredPath)
 		if err != nil {
 			t.Errorf("failed to read restored file %s: %v", path, err)

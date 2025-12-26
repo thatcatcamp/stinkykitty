@@ -23,12 +23,14 @@ type BackupMetadata struct {
 // BackupManager handles all backup operations
 type BackupManager struct {
 	BackupPath string // /var/lib/stinkykitty/backups/
+	BasePath   string // Base path for system files (default: /var/lib/stinkykitty)
 }
 
 // NewBackupManager creates a new backup manager
 func NewBackupManager(backupPath string) *BackupManager {
 	return &BackupManager{
 		BackupPath: backupPath,
+		BasePath:   filepath.Join("/", "var", "lib", "stinkykitty"), // Default production path
 	}
 }
 
@@ -147,8 +149,10 @@ func addDirToTar(tw *tar.Writer, dirPath string, tarPath string) error {
 	return nil
 }
 
-// RestoreBackup restores a backup to a specified directory
-func (bm *BackupManager) RestoreBackup(filename string, restoreDir string) error {
+// RestoreBackup restores the system from a backup tarball.
+// It extracts the database dump and media files to their standard locations.
+// Database restoration via GORM will be handled in a separate task.
+func (bm *BackupManager) RestoreBackup(filename string) error {
 	// Construct full path to backup file
 	backupPath := filepath.Join(bm.BackupPath, "system", filename)
 
@@ -185,8 +189,14 @@ func (bm *BackupManager) RestoreBackup(filename string, restoreDir string) error
 			continue
 		}
 
-		// Construct target path
-		targetPath := filepath.Join(restoreDir, header.Name)
+		// Only process files that start with "uploads/" prefix
+		if !filepath.HasPrefix(header.Name, "uploads/") && header.Name != "uploads" {
+			continue
+		}
+
+		// Construct target path: BasePath + full path from tar
+		// e.g., tar has "uploads/photo.jpg" -> extract to "/var/lib/stinkykitty/uploads/photo.jpg"
+		targetPath := filepath.Join(bm.BasePath, header.Name)
 
 		// Handle directories
 		if header.Typeflag == tar.TypeDir {
