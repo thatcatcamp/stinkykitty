@@ -33,24 +33,24 @@ func RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		// Get site from context (set by site resolution middleware)
+		// Priority 1: Check query parameter first (for explicit site access like ?site=8)
 		var site *models.Site
-		siteVal, exists := c.Get("site")
-		if exists {
-			site = siteVal.(*models.Site)
+		siteIDStr := c.Query("site")
+		if siteIDStr != "" {
+			var siteID uint
+			if _, err := fmt.Sscanf(siteIDStr, "%d", &siteID); err == nil {
+				var queriedSite models.Site
+				if err := db.GetDB().First(&queriedSite, siteID).Error; err == nil {
+					site = &queriedSite
+				}
+			}
 		}
 
-		// Fallback: try to get site from query parameter if needed (for redirects after creation)
+		// Priority 2: Fall back to context site (set by site resolution middleware)
 		if site == nil {
-			siteIDStr := c.Query("site")
-			if siteIDStr != "" {
-				var siteID uint
-				if _, err := fmt.Sscanf(siteIDStr, "%d", &siteID); err == nil {
-					var queriedSite models.Site
-					if err := db.GetDB().First(&queriedSite, siteID).Error; err == nil {
-						site = &queriedSite
-					}
-				}
+			siteVal, exists := c.Get("site")
+			if exists {
+				site = siteVal.(*models.Site)
 			}
 		}
 
