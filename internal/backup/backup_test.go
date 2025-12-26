@@ -1,9 +1,10 @@
 package backup
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 func TestNewBackupManager(t *testing.T) {
@@ -43,7 +44,7 @@ func TestCreateBackup(t *testing.T) {
 	manager := NewBackupManager(tmpDir)
 
 	// Test that CreateBackup returns a valid filename even without database
-	filename, err := manager.CreateBackup("test", "")
+	filename, err := manager.CreateBackup("")
 	if err != nil {
 		t.Fatalf("CreateBackup failed: %v", err)
 	}
@@ -58,12 +59,27 @@ func TestCreateBackup(t *testing.T) {
 	}
 }
 
-func TestBackupFilenameFormat(t *testing.T) {
-	// Test the expected backup filename format without creating actual backup
-	now := time.Now()
-	expectedPrefix := "stinkykitty-" + now.Format("2006-01-02")
+func TestCreateBackupFilenameFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	manager := NewBackupManager(tmpDir)
 
-	if !strings.Contains("stinkykitty-2025-12-25-143022.tar.gz", expectedPrefix) {
-		t.Fatalf("backup filename should contain date prefix")
+	// Create an empty tar to satisfy the method (no media dir, no db)
+	filename, err := manager.CreateBackup("")
+	if err != nil {
+		t.Fatalf("CreateBackup failed: %v", err)
+	}
+
+	// Verify filename format: stinkykitty-YYYY-MM-DD-HHMMSS.tar.gz
+	if !strings.HasPrefix(filename, "stinkykitty-") {
+		t.Errorf("filename should start with 'stinkykitty-', got: %s", filename)
+	}
+	if !strings.HasSuffix(filename, ".tar.gz") {
+		t.Errorf("filename should end with '.tar.gz', got: %s", filename)
+	}
+
+	// Verify file was actually created
+	backupPath := filepath.Join(tmpDir, "system", filename)
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+		t.Errorf("backup file not created at expected location: %s", backupPath)
 	}
 }

@@ -33,7 +33,7 @@ func NewBackupManager(backupPath string) *BackupManager {
 }
 
 // CreateBackup creates a new system backup with database and media files
-func (bm *BackupManager) CreateBackup(dbType string, dbPath string) (string, error) {
+func (bm *BackupManager) CreateBackup(dbPath string) (filename string, retErr error) {
 	// Ensure backup directory exists
 	if err := os.MkdirAll(filepath.Join(bm.BackupPath, "system"), 0755); err != nil {
 		return "", fmt.Errorf("failed to create backup directory: %w", err)
@@ -41,7 +41,7 @@ func (bm *BackupManager) CreateBackup(dbType string, dbPath string) (string, err
 
 	// Generate backup filename with timestamp
 	timestamp := time.Now().Format("2006-01-02-150405")
-	filename := fmt.Sprintf("stinkykitty-%s.tar.gz", timestamp)
+	filename = fmt.Sprintf("stinkykitty-%s.tar.gz", timestamp)
 	backupPath := filepath.Join(bm.BackupPath, "system", filename)
 
 	// Create tar.gz file
@@ -49,15 +49,27 @@ func (bm *BackupManager) CreateBackup(dbType string, dbPath string) (string, err
 	if err != nil {
 		return "", fmt.Errorf("failed to create backup file: %w", err)
 	}
-	defer out.Close()
+	defer func() {
+		if err := out.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close backup file: %w", err)
+		}
+	}()
 
 	// Create gzip writer
 	gz := gzip.NewWriter(out)
-	defer gz.Close()
+	defer func() {
+		if err := gz.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close gzip writer: %w", err)
+		}
+	}()
 
 	// Create tar writer
 	tw := tar.NewWriter(gz)
-	defer tw.Close()
+	defer func() {
+		if err := tw.Close(); err != nil && retErr == nil {
+			retErr = fmt.Errorf("failed to close tar writer: %w", err)
+		}
+	}()
 
 	// Add database dump to tar
 	if dbPath != "" {
@@ -68,7 +80,8 @@ func (bm *BackupManager) CreateBackup(dbType string, dbPath string) (string, err
 	}
 
 	// Add media directory to tar
-	mediaPath := filepath.Join("var", "lib", "stinkykitty", "uploads")
+	// Media files are stored at a standard location
+	mediaPath := filepath.Join("/", "var", "lib", "stinkykitty", "uploads")
 	if _, err := os.Stat(mediaPath); err == nil {
 		if err := addDirToTar(tw, mediaPath, "uploads"); err != nil {
 			os.Remove(backupPath)
@@ -76,20 +89,20 @@ func (bm *BackupManager) CreateBackup(dbType string, dbPath string) (string, err
 		}
 	}
 
-	return filename, nil
+	return filename, retErr
 }
 
 // addFileToTar adds a single file to tar archive
 func addFileToTar(tw *tar.Writer, filePath string, tarPath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
 	stat, err := file.Stat()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to stat file %s: %w", filePath, err)
 	}
 
 	header := &tar.Header{
@@ -99,18 +112,21 @@ func addFileToTar(tw *tar.Writer, filePath string, tarPath string) error {
 	}
 
 	if err := tw.WriteHeader(header); err != nil {
-		return err
+		return fmt.Errorf("failed to write tar header for %s: %w", filePath, err)
 	}
 
-	_, err = io.Copy(tw, file)
-	return err
+	if _, err := io.Copy(tw, file); err != nil {
+		return fmt.Errorf("failed to copy file %s to tar: %w", filePath, err)
+	}
+
+	return nil
 }
 
 // addDirToTar recursively adds a directory to tar archive
 func addDirToTar(tw *tar.Writer, dirPath string, tarPath string) error {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read directory %s: %w", dirPath, err)
 	}
 
 	for _, entry := range entries {
@@ -119,11 +135,11 @@ func addDirToTar(tw *tar.Writer, dirPath string, tarPath string) error {
 
 		if entry.IsDir() {
 			if err := addDirToTar(tw, path, name); err != nil {
-				return err
+				return fmt.Errorf("failed to add subdirectory %s: %w", name, err)
 			}
 		} else {
 			if err := addFileToTar(tw, path, name); err != nil {
-				return err
+				return fmt.Errorf("failed to add file %s: %w", name, err)
 			}
 		}
 	}
