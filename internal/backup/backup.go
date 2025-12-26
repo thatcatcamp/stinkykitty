@@ -183,9 +183,37 @@ func (bm *BackupManager) RestoreBackup(filename string) error {
 			return fmt.Errorf("failed to read tar header: %w", err)
 		}
 
-		// TODO: Database restoration via GORM will be handled in a separate task
-		// For now, skip the database.db file
+		// Handle database.db - extract to BasePath
 		if header.Name == "database.db" {
+			targetPath := filepath.Join(bm.BasePath, header.Name)
+
+			// Ensure parent directory exists
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory for %s: %w", targetPath, err)
+			}
+
+			// Create file
+			outFile, err := os.Create(targetPath)
+			if err != nil {
+				return fmt.Errorf("failed to create database file %s: %w", targetPath, err)
+			}
+
+			// Copy file contents
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return fmt.Errorf("failed to extract database file: %w", err)
+			}
+
+			// Close file
+			if err := outFile.Close(); err != nil {
+				return fmt.Errorf("failed to close database file: %w", err)
+			}
+
+			// Set file permissions
+			if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("failed to set permissions for database file: %w", err)
+			}
+
 			continue
 		}
 

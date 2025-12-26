@@ -208,6 +208,51 @@ func TestRestoreBackupExtractsFiles(t *testing.T) {
 	}
 }
 
+// TestRestoreDatabaseFile verifies that RestoreBackup extracts and restores the database.db file
+func TestRestoreDatabaseFile(t *testing.T) {
+	// Setup: Create a temporary backup with database.db
+	tmpDir := t.TempDir()
+	manager := NewBackupManager(tmpDir)
+	// Override BasePath for testing to avoid permission issues
+	manager.BasePath = tmpDir
+
+	// Create a test database file
+	testDBPath := filepath.Join(tmpDir, "test_db.sqlite3")
+	testDBFile, err := os.Create(testDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+	testDBFile.WriteString("test database content v1")
+	testDBFile.Close()
+
+	// Create a backup containing the test database
+	backupFile, err := manager.CreateBackup(testDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create backup: %v", err)
+	}
+
+	// Modify the original database to simulate a different state
+	os.WriteFile(testDBPath, []byte("modified content"), 0644)
+
+	// Restore from backup - database.db should be extracted and restored
+	err = manager.RestoreBackup(backupFile)
+	if err != nil {
+		t.Fatalf("RestoreBackup failed: %v", err)
+	}
+
+	// Verify: The restored database.db should exist in BasePath
+	restoredDBPath := filepath.Join(manager.BasePath, "database.db")
+	content, err := os.ReadFile(restoredDBPath)
+	if err != nil {
+		t.Fatalf("Restored database.db not found at %s: %v", restoredDBPath, err)
+	}
+
+	// Verify content matches original backup
+	if string(content) != "test database content v1" {
+		t.Errorf("Restored database content mismatch. Expected 'test database content v1', got '%s'", string(content))
+	}
+}
+
 // Helper function to create a test backup
 func createTestBackup(backupPath, sourceDir string) error {
 	out, err := os.Create(backupPath)
