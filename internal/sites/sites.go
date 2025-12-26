@@ -169,7 +169,8 @@ func ListSiteUsers(db *gorm.DB, siteID uint) ([]models.SiteUser, error) {
 
 // DeleteSite soft-deletes a site
 func DeleteSite(db *gorm.DB, id uint) error {
-	result := db.Delete(&models.Site{}, id)
+	// Use Unscoped to delete even if already soft-deleted
+	result := db.Unscoped().Delete(&models.Site{}, id)
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete site: %w", result.Error)
 	}
