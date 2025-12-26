@@ -83,7 +83,7 @@ func (bm *BackupManager) CreateBackup(dbPath string) (filename string, retErr er
 
 	// Add media directory to tar
 	// Media files are stored at a standard location
-	mediaPath := filepath.Join("/", "var", "lib", "stinkykitty", "uploads")
+	mediaPath := filepath.Join(bm.BasePath, "uploads")
 	if _, err := os.Stat(mediaPath); err == nil {
 		if err := addDirToTar(tw, mediaPath, "uploads"); err != nil {
 			os.Remove(backupPath)
