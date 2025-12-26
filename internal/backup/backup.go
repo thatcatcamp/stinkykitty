@@ -1,3 +1,4 @@
+// Package backup provides backup and export functionality for the StinkyKitty CMS.
 package backup
 
 import (
