@@ -568,7 +568,7 @@ func DashboardHandler(c *gin.Context) {
                 <h2>Your Camps</h2>
                 <p>Select a camp to edit its pages and settings</p>
                 <div class="hero-buttons">
-                    <a href="/admin/pages/new" class="btn">+ Create New Camp</a>
+                    <a href="/admin/create-camp" class="btn">+ Create New Camp</a>
                 </div>
             </div>
 
