@@ -294,6 +294,7 @@ func DashboardHandler(c *gin.Context) {
 					<div class="site-actions">
 						<a href="/admin/pages?site=` + fmt.Sprintf("%d", us.ID) + `" class="btn-small">Edit</a>
 						<a href="https://` + domainDisplay + `" target="_blank" class="btn-small btn-secondary">View</a>
+						<button class="btn-small btn-danger" onclick="confirmDelete(` + fmt.Sprintf("%d", us.ID) + `, '` + us.Subdomain + `')">Delete</button>
 					</div>
 				</div>
 			`
@@ -584,6 +585,108 @@ func DashboardHandler(c *gin.Context) {
             </div>
         </div>
     </div>
+
+    <!-- Delete confirmation modal -->
+    <div id="delete-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>Delete Camp?</h3>
+            <p>You are about to delete <strong id="delete-camp-name"></strong>.</p>
+            <p style="color: var(--color-text-secondary); font-size: 13px;">
+                The camp data and backups will be preserved for manual cleanup if needed later.
+            </p>
+            <div class="modal-actions">
+                <button onclick="cancelDelete()" class="btn-small btn-secondary">Cancel</button>
+                <button onclick="confirmDeleteAction()" class="btn-small btn-danger">Delete Camp</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--color-bg-card);
+            border-radius: var(--radius-base);
+            padding: var(--spacing-lg);
+            max-width: 400px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--color-text-primary);
+        }
+
+        .modal-content p {
+            color: var(--color-text-secondary);
+            margin: var(--spacing-base) 0;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: var(--spacing-base);
+            margin-top: var(--spacing-lg);
+        }
+
+        .modal-actions button {
+            flex: 1;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+    </style>
+
+    <script>
+        let pendingDeleteSiteId = null;
+
+        function confirmDelete(siteId, subdomain) {
+            pendingDeleteSiteId = siteId;
+            document.getElementById('delete-camp-name').textContent = subdomain;
+            document.getElementById('delete-modal').style.display = 'flex';
+        }
+
+        function cancelDelete() {
+            pendingDeleteSiteId = null;
+            document.getElementById('delete-modal').style.display = 'none';
+        }
+
+        function confirmDeleteAction() {
+            if (!pendingDeleteSiteId) return;
+
+            fetch('/admin/sites/' + pendingDeleteSiteId + '/delete', { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        location.reload();
+                    }
+                })
+                .catch(e => alert('Failed: ' + e));
+        }
+
+        // Close modal if user clicks outside
+        document.getElementById('delete-modal').onclick = function(e) {
+            if (e.target === this) cancelDelete();
+        };
+    </script>
 </body>
 </html>`
 
