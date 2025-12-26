@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/sites"
@@ -33,6 +34,11 @@ func CreateCampFormHandler(c *gin.Context) {
 }
 
 func createCampStep1(c *gin.Context) {
+	baseDomain := config.GetString("server.base_domain")
+	if baseDomain == "" {
+		baseDomain = "localhost"
+	}
+
 	html := `<!DOCTYPE html>
 <html>
 <head>
@@ -196,7 +202,7 @@ func createCampStep1(c *gin.Context) {
 				>
 				<div class="help-text">
 					Letters, numbers, and hyphens only. Max 63 characters.
-					Your camp will be at: <strong id="preview">mycamp.stinkykitty.org</strong>
+					Your camp will be at: <strong id="preview">mycamp.` + baseDomain + `</strong>
 				</div>
 				<div id="validation-status" class="validation-status"></div>
 			</div>
@@ -209,6 +215,7 @@ func createCampStep1(c *gin.Context) {
 	</div>
 
 	<script>
+		const baseDomain = '` + baseDomain + `';
 		const input = document.getElementById('subdomain');
 		const preview = document.getElementById('preview');
 		const status = document.getElementById('validation-status');
@@ -227,7 +234,7 @@ func createCampStep1(c *gin.Context) {
 			}
 
 			// Update preview
-			preview.textContent = this.value + '.stinkykitty.org';
+			preview.textContent = this.value + '.' + baseDomain;
 
 			// Validate and check availability
 			validateSubdomain(this.value);
@@ -533,6 +540,12 @@ func createCampStep2(c *gin.Context) {
 }
 
 func createCampStep3(c *gin.Context) {
+	// Get base domain from config
+	baseDomain := config.GetString("server.base_domain")
+	if baseDomain == "" {
+		baseDomain = "localhost"
+	}
+
 	// Accept both POST (with password) and GET (existing user) to support step 2 navigation
 	subdomain := c.Query("subdomain")
 	if subdomain == "" {
@@ -723,7 +736,7 @@ func createCampStep3(c *gin.Context) {
 		<div class="review-section">
 			<div class="review-item">
 				<strong>Camp Subdomain:</strong>
-				<em>` + html.EscapeString(subdomain) + `.stinkykitty.org</em>
+				<em>` + html.EscapeString(subdomain) + `.` + baseDomain + `</em>
 			</div>
 			<div class="review-item">
 				<strong>Admin User:</strong>
