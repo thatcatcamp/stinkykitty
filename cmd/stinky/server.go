@@ -16,7 +16,10 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/handlers"
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
+	"github.com/thatcatcamp/stinkykitty/internal/models"
+	"github.com/thatcatcamp/stinkykitty/internal/themes"
 	"github.com/thatcatcamp/stinkykitty/internal/tls"
+	"gorm.io/gorm"
 )
 
 var serverCmd = &cobra.Command{
@@ -80,6 +83,7 @@ var serverStartCmd = &cobra.Command{
 		// Site-required routes
 		siteGroup := r.Group("/")
 		siteGroup.Use(middleware.SiteResolutionMiddleware(db.GetDB(), baseDomain))
+		siteGroup.Use(themeMiddleware(db.GetDB()))
 		{
 			// Favicon - simple cat SVG
 			siteGroup.GET("/favicon.ico", func(c *gin.Context) {
@@ -148,7 +152,7 @@ var serverStartCmd = &cobra.Command{
 		}
 
 		// Handle all other routes as potential pages
-		r.NoRoute(middleware.SiteResolutionMiddleware(db.GetDB(), baseDomain), handlers.ServePage)
+		r.NoRoute(middleware.SiteResolutionMiddleware(db.GetDB(), baseDomain), themeMiddleware(db.GetDB()), handlers.ServePage)
 
 		// Check if TLS is enabled
 		if config.GetBool("server.tls_enabled") {
@@ -228,6 +232,40 @@ var serverStartCmd = &cobra.Command{
 			}
 		}
 	},
+}
+
+// themeMiddleware injects theme CSS into context based on site settings
+func themeMiddleware(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get site from context (set by SiteMiddleware)
+		siteValue, exists := c.Get("site")
+		if !exists {
+			c.Next()
+			return
+		}
+
+		site, ok := siteValue.(*models.Site)
+		if !ok {
+			c.Next()
+			return
+		}
+
+		// Generate CSS for site's palette and dark mode
+		palette := themes.GetPalette(site.ThemePalette)
+		if palette == nil {
+			palette = themes.GetPalette("slate") // Default to slate if invalid
+		}
+
+		colors := themes.GenerateColors(palette, site.DarkMode)
+		css := themes.GenerateCSS(colors)
+
+		// Inject CSS into template context
+		c.Set("themeCSS", css)
+		c.Set("themePalette", site.ThemePalette)
+		c.Set("darkMode", site.DarkMode)
+
+		c.Next()
+	}
 }
 
 func init() {

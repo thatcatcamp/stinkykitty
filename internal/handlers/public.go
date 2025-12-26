@@ -63,6 +63,9 @@ func ServeHomepage(c *gin.Context) {
 
 	if result.Error != nil {
 		// No homepage exists yet - show placeholder
+		themeCSS, _ := c.Get("themeCSS")
+		themeCSSStr, _ := themeCSS.(string)
+
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -71,8 +74,9 @@ func ServeHomepage(c *gin.Context) {
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
 	<style>
+		%s
 		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
-		.placeholder { text-align: center; color: #666; }
+		.placeholder { text-align: center; }
 	</style>
 </head>
 <body>
@@ -83,7 +87,7 @@ func ServeHomepage(c *gin.Context) {
 	</div>
 </body>
 </html>
-`, site.Subdomain, site.Subdomain)))
+`, site.Subdomain, themeCSSStr, site.Subdomain)))
 		return
 	}
 
@@ -103,6 +107,10 @@ func ServeHomepage(c *gin.Context) {
 		content.WriteString("\n")
 	}
 
+	// Get theme CSS from context
+	themeCSS, _ := c.Get("themeCSS")
+	themeCSSStr, _ := themeCSS.(string)
+
 	// Wrap in HTML template
 	html := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -112,20 +120,21 @@ func ServeHomepage(c *gin.Context) {
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
 	<style>
+		%s
 		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 0 20px 20px; line-height: 1.6; }
 		.text-block { margin-bottom: 1.5em; }
 
 		/* Navigation styles */
-		.site-nav { background: #f8f9fa; border-bottom: 2px solid #e9ecef; margin: 0 -20px 30px; padding: 0 20px; }
+		.site-nav { border-bottom: 2px solid var(--color-border); margin: 0 -20px 30px; padding: 0 20px; }
 		.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
 		.site-nav li { margin: 0; }
-		.site-nav a { display: block; padding: 15px 20px; color: #333; text-decoration: none; transition: background-color 0.2s; }
-		.site-nav a:hover { background-color: #e9ecef; }
+		.site-nav a { display: block; padding: 15px 20px; text-decoration: none; transition: background-color 0.2s; }
+		.site-nav a:hover { opacity: 0.8; }
 
 		/* Mobile responsive */
 		@media (max-width: 600px) {
 			.site-nav ul { flex-direction: column; }
-			.site-nav a { padding: 12px 15px; border-bottom: 1px solid #e9ecef; }
+			.site-nav a { padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
 		}
 	</style>
 </head>
@@ -133,12 +142,12 @@ func ServeHomepage(c *gin.Context) {
 	%s
 	<h1>%s</h1>
 	%s
-	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.9em; color: #666;">
+	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
 		<a href="/admin/login">Admin Login</a>
 	</footer>
 </body>
 </html>
-`, page.Title, navigation, page.Title, content.String())
+`, page.Title, themeCSSStr, navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -166,6 +175,9 @@ func ServePage(c *gin.Context) {
 
 	if result.Error != nil {
 		// Render nice 404 page
+		themeCSS, _ := c.Get("themeCSS")
+		themeCSSStr, _ := themeCSS.(string)
+
 		html := fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -174,12 +186,11 @@ func ServePage(c *gin.Context) {
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Page Not Found - %s</title>
 	<style>
+		%s
 		body { font-family: system-ui, sans-serif; max-width: 600px; margin: 100px auto; padding: 20px; text-align: center; }
-		h1 { font-size: 72px; margin: 0; color: #dc3545; }
-		h2 { font-size: 24px; color: #333; margin: 20px 0; }
-		p { color: #666; line-height: 1.6; }
-		a { color: #007bff; text-decoration: none; }
-		a:hover { text-decoration: underline; }
+		h1 { font-size: 72px; margin: 0; color: var(--color-error); }
+		h2 { font-size: 24px; margin: 20px 0; }
+		p { line-height: 1.6; }
 		.links { margin-top: 30px; }
 		.links a { margin: 0 10px; }
 	</style>
@@ -193,7 +204,7 @@ func ServePage(c *gin.Context) {
 		<a href="/admin/login">Admin Login</a>
 	</div>
 </body>
-</html>`, site.Subdomain)
+</html>`, site.Subdomain, themeCSSStr)
 		c.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(html))
 		return
 	}
@@ -214,6 +225,10 @@ func ServePage(c *gin.Context) {
 		content.WriteString("\n")
 	}
 
+	// Get theme CSS from context
+	themeCSS, _ := c.Get("themeCSS")
+	themeCSSStr, _ := themeCSS.(string)
+
 	// Wrap in HTML template
 	html := fmt.Sprintf(`
 <!DOCTYPE html>
@@ -223,20 +238,21 @@ func ServePage(c *gin.Context) {
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
 	<style>
+		%s
 		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 0 20px 20px; line-height: 1.6; }
 		.text-block { margin-bottom: 1.5em; }
 
 		/* Navigation styles */
-		.site-nav { background: #f8f9fa; border-bottom: 2px solid #e9ecef; margin: 0 -20px 30px; padding: 0 20px; }
+		.site-nav { border-bottom: 2px solid var(--color-border); margin: 0 -20px 30px; padding: 0 20px; }
 		.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
 		.site-nav li { margin: 0; }
-		.site-nav a { display: block; padding: 15px 20px; color: #333; text-decoration: none; transition: background-color 0.2s; }
-		.site-nav a:hover { background-color: #e9ecef; }
+		.site-nav a { display: block; padding: 15px 20px; text-decoration: none; transition: background-color 0.2s; }
+		.site-nav a:hover { opacity: 0.8; }
 
 		/* Mobile responsive */
 		@media (max-width: 600px) {
 			.site-nav ul { flex-direction: column; }
-			.site-nav a { padding: 12px 15px; border-bottom: 1px solid #e9ecef; }
+			.site-nav a { padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
 		}
 	</style>
 </head>
@@ -244,12 +260,12 @@ func ServePage(c *gin.Context) {
 	%s
 	<h1>%s</h1>
 	%s
-	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.9em; color: #666;">
+	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
 		<a href="/">Home</a> | <a href="/admin/login">Admin Login</a>
 	</footer>
 </body>
 </html>
-`, page.Title, navigation, page.Title, content.String())
+`, page.Title, themeCSSStr, navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }

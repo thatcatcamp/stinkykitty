@@ -42,7 +42,9 @@ type Site struct {
 	SiteTagline    string
 	LogoPath       string
 	FontPair       string `gorm:"default:system"`
-	AllowedIPs     string `gorm:"type:text"` // JSON array of CIDR ranges
+	ThemePalette   string `gorm:"default:slate"` // Theme color palette name
+	DarkMode       bool   `gorm:"default:false"` // Enable dark mode
+	AllowedIPs     string `gorm:"type:text"`     // JSON array of CIDR ranges
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
