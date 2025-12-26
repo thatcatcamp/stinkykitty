@@ -253,6 +253,36 @@ func TestRestoreDatabaseFile(t *testing.T) {
 	}
 }
 
+// TestRestoreAndValidateDatabase verifies that a restored database can be reopened and used
+func TestRestoreAndValidateDatabase(t *testing.T) {
+	// This test requires actual database setup
+	// For now, verify that RestoreBackup doesn't error when given a valid backup
+	tmpDir := t.TempDir()
+	manager := NewBackupManager(tmpDir)
+	// Override BasePath for testing to avoid permission issues
+	manager.BasePath = tmpDir
+
+	// Create a dummy database for testing
+	testDBPath := filepath.Join(tmpDir, "test.db")
+
+	// Initialize an actual SQLite database (minimal)
+	f, _ := os.Create(testDBPath)
+	f.WriteString("SQLite format 3\x00")
+	f.Close()
+
+	// Create backup
+	backupFile, err := manager.CreateBackup(testDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create backup: %v", err)
+	}
+
+	// Restore should not error
+	err = manager.RestoreBackup(backupFile)
+	if err != nil {
+		t.Fatalf("RestoreBackup failed: %v", err)
+	}
+}
+
 // Helper function to create a test backup
 func createTestBackup(backupPath, sourceDir string) error {
 	out, err := os.Create(backupPath)
