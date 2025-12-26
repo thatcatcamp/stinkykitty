@@ -126,6 +126,7 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.POST("/menu/:id/delete", handlers.DeleteMenuItemHandler)
 					adminGroup.POST("/menu/:id/move-up", handlers.MoveMenuItemUpHandler)
 					adminGroup.POST("/menu/:id/move-down", handlers.MoveMenuItemDownHandler)
+					adminGroup.GET("/export", handlers.ExportSiteHandler(db.GetDB()))
 				}
 			}
 		}

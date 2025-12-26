@@ -1341,6 +1341,7 @@ func PagesListHandler(c *gin.Context) {
                 <div style="margin-top: 15px;">
                     <a href="/admin/pages/new" class="btn">+ Create New Page</a>
                     <a href="/admin/menu" class="btn" style="background: #17a2b8; margin-left: 10px;">Navigation Menu</a>
+                    <a href="/admin/export?site=` + fmt.Sprintf("%d", site.ID) + `" class="btn" style="background: #10b981; margin-left: 10px;">Download Site</a>
                 </div>
             </div>
         </div>
