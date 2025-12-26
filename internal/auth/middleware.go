@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -33,12 +34,30 @@ func RequireAuth() gin.HandlerFunc {
 		}
 
 		// Get site from context (set by site resolution middleware)
+		var site *models.Site
 		siteVal, exists := c.Get("site")
-		if !exists {
+		if exists {
+			site = siteVal.(*models.Site)
+		}
+
+		// Fallback: try to get site from query parameter if needed (for redirects after creation)
+		if site == nil {
+			siteIDStr := c.Query("site")
+			if siteIDStr != "" {
+				var siteID uint
+				if _, err := fmt.Sscanf(siteIDStr, "%d", &siteID); err == nil {
+					var queriedSite models.Site
+					if err := db.GetDB().First(&queriedSite, siteID).Error; err == nil {
+						site = &queriedSite
+					}
+				}
+			}
+		}
+
+		if site == nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		site := siteVal.(*models.Site)
 
 		// Check if user has access to this site
 		hasAccess := false
