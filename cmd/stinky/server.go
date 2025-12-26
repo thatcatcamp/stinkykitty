@@ -40,7 +40,7 @@ var serverStartCmd = &cobra.Command{
 		}
 
 		// Initialize backup scheduler
-		backupPath := "/var/lib/stinkykitty/backups"
+		backupPath := config.GetString("backups.path")
 		backupManager := backup.NewBackupManager(backupPath)
 		scheduler := backup.NewScheduler(backupManager)
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -56,7 +57,11 @@ func setDefaults() {
 	v.SetDefault("storage.backups_dir", "/var/lib/stinkykitty/backups")
 
 	// Backup defaults
-	v.SetDefault("backups.schedule", "0 3 * * *") // 3am daily
+	v.SetDefault("backups.path", "/var/lib/stinkykitty/backups")
+	v.SetDefault("backups.interval", "24h")        // Daily backups
+	v.SetDefault("backups.retention", 10)          // Keep last 10 backups
+	v.SetDefault("backups.enable_auto_backup", true) // Enabled by default
+	v.SetDefault("backups.schedule", "0 3 * * *") // 3am daily (cron format)
 	v.SetDefault("backups.retention.daily", 7)
 	v.SetDefault("backups.retention.weekly", 4)
 	v.SetDefault("backups.retention.monthly", 12)
@@ -99,6 +104,14 @@ func GetBool(key string) bool {
 		return false
 	}
 	return v.GetBool(key)
+}
+
+// GetDuration returns a config value as time.Duration
+func GetDuration(key string) time.Duration {
+	if v == nil {
+		return 0
+	}
+	return v.GetDuration(key)
 }
 
 // Set sets a config value and saves to file
