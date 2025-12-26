@@ -2,6 +2,7 @@ package backup
 
 import (
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -34,7 +35,7 @@ func (s *Scheduler) Start() chan bool {
 
 		// Run initial backup immediately
 		if err := s.runBackup(); err != nil {
-			fmt.Printf("initial backup failed: %v\n", err)
+			log.Printf("initial backup failed: %v\n", err)
 		}
 
 		// Loop until stopped
@@ -45,7 +46,7 @@ func (s *Scheduler) Start() chan bool {
 				return
 			case <-s.ticker.C:
 				if err := s.runBackup(); err != nil {
-					fmt.Printf("scheduled backup failed: %v\n", err)
+					log.Printf("scheduled backup failed: %v\n", err)
 				}
 			}
 		}
