@@ -146,3 +146,86 @@ func addDirToTar(tw *tar.Writer, dirPath string, tarPath string) error {
 
 	return nil
 }
+
+// RestoreBackup restores a backup to a specified directory
+func (bm *BackupManager) RestoreBackup(filename string, restoreDir string) error {
+	// Construct full path to backup file
+	backupPath := filepath.Join(bm.BackupPath, "system", filename)
+
+	// Open backup file
+	file, err := os.Open(backupPath)
+	if err != nil {
+		return fmt.Errorf("failed to open backup file: %w", err)
+	}
+	defer file.Close()
+
+	// Create gzip reader
+	gz, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gz.Close()
+
+	// Create tar reader
+	tr := tar.NewReader(gz)
+
+	// Extract all files from the tar
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break // End of archive
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar header: %w", err)
+		}
+
+		// TODO: Database restoration via GORM will be handled in a separate task
+		// For now, skip the database.db file
+		if header.Name == "database.db" {
+			continue
+		}
+
+		// Construct target path
+		targetPath := filepath.Join(restoreDir, header.Name)
+
+		// Handle directories
+		if header.Typeflag == tar.TypeDir {
+			if err := os.MkdirAll(targetPath, 0755); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", targetPath, err)
+			}
+			continue
+		}
+
+		// Handle regular files
+		if header.Typeflag == tar.TypeReg {
+			// Ensure parent directory exists
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return fmt.Errorf("failed to create parent directory for %s: %w", targetPath, err)
+			}
+
+			// Create file
+			outFile, err := os.Create(targetPath)
+			if err != nil {
+				return fmt.Errorf("failed to create file %s: %w", targetPath, err)
+			}
+
+			// Copy file contents
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return fmt.Errorf("failed to extract file %s: %w", targetPath, err)
+			}
+
+			// Close file
+			if err := outFile.Close(); err != nil {
+				return fmt.Errorf("failed to close file %s: %w", targetPath, err)
+			}
+
+			// Set file permissions
+			if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
+				return fmt.Errorf("failed to set permissions for %s: %w", targetPath, err)
+			}
+		}
+	}
+
+	return nil
+}
