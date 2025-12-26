@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
@@ -245,6 +246,12 @@ func DashboardHandler(c *gin.Context) {
 	}
 	user := userVal.(*models.User)
 
+	// Get base domain from config
+	baseDomain := config.GetString("server.base_domain")
+	if baseDomain == "" {
+		baseDomain = "localhost"
+	}
+
 	// Get all sites where user is an admin/owner, OR all sites if global admin
 	var userSites []struct {
 		ID           uint
@@ -282,7 +289,7 @@ func DashboardHandler(c *gin.Context) {
 			if us.CustomDomain != nil && *us.CustomDomain != "" {
 				domainDisplay = *us.CustomDomain
 			} else {
-				domainDisplay = us.Subdomain + ".stinkykitty.org"
+				domainDisplay = us.Subdomain + "." + baseDomain
 			}
 
 			sitesHTML += `
