@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -211,5 +212,67 @@ func TestRequireAuthGlobalAdminCanAccessAnySite(t *testing.T) {
 
 	if c.IsAborted() {
 		t.Error("Middleware should not abort for global admin")
+	}
+}
+
+// TestRequireAuthUpdatesContextWithQueryParamSite verifies that when accessing
+// a site via ?site=X query parameter, the middleware updates the context
+// with the correct site, not the site resolved from Host header.
+// This is a regression test for the "dead camps" bug.
+func TestRequireAuthUpdatesContextWithQueryParamSite(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	database := setupAuthTestDB(t)
+	db.SetDB(database)
+
+	// Create user
+	user := models.User{Email: "test@example.com", PasswordHash: "hash"}
+	database.Create(&user)
+
+	// Create two sites
+	site1 := models.Site{Subdomain: "maincamp", OwnerID: user.ID}
+	database.Create(&site1)
+
+	site2 := models.Site{Subdomain: "testcamp", OwnerID: user.ID}
+	database.Create(&site2)
+
+	// Generate token for user
+	token, err := GenerateToken(&user, &site1)
+	if err != nil {
+		t.Fatalf("Failed to generate token: %v", err)
+	}
+
+	// Simulate SiteResolutionMiddleware setting site1 in context
+	// (because request came to maincamp.example.com)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	// Request to maincamp but query parameter asks for site2
+	c.Request = httptest.NewRequest("GET", "/admin/pages?site="+fmt.Sprintf("%d", site2.ID), nil)
+	c.Request.AddCookie(&http.Cookie{
+		Name:  "stinky_token",
+		Value: token,
+	})
+
+	// SiteResolutionMiddleware would have set site1
+	c.Set("site", &site1)
+
+	// Call RequireAuth middleware
+	middleware := RequireAuth()
+	middleware(c)
+
+	if c.IsAborted() {
+		t.Error("Middleware should not abort when user has access to queried site")
+	}
+
+	// CRITICAL BUG TEST: Context should have been updated to site2, not site1
+	contextSite, exists := c.Get("site")
+	if !exists {
+		t.Fatal("Site should be in context after RequireAuth")
+	}
+
+	contextSiteVal := contextSite.(*models.Site)
+	if contextSiteVal.ID != site2.ID {
+		t.Errorf("Context site should be updated to queried site (ID=%d), but got ID=%d",
+			site2.ID, contextSiteVal.ID)
 	}
 }

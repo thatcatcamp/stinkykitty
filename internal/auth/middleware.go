@@ -88,6 +88,13 @@ func RequireAuth() gin.HandlerFunc {
 
 		// Set user in context for handlers
 		c.Set("user", &user)
+
+		// If site was resolved from query parameter, update context with it
+		// (otherwise context has site from SiteResolutionMiddleware based on Host header)
+		if site != nil {
+			c.Set("site", site)
+		}
+
 		c.Next()
 	}
 }
