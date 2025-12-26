@@ -12,6 +12,12 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
+// validSubdomainRegex matches DNS-compliant subdomains (RFC 1123)
+// Format: starts and ends with alphanumeric, may contain hyphens in middle
+// Valid: "mycamp", "my-camp", "camp123", "a"
+// Invalid: "-camp", "camp-", "--camp"
+var validSubdomainRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
 // Reserved subdomains that cannot be used
 var reservedSubdomains = map[string]bool{
 	"admin":  true,
@@ -45,8 +51,7 @@ func SubdomainCheckHandler(c *gin.Context) {
 	}
 
 	// Validate format (lowercase alphanumeric and hyphens only)
-	validSubdomain := regexp.MustCompile(`^[a-z0-9-]+$`)
-	if !validSubdomain.MatchString(subdomain) {
+	if !validSubdomainRegex.MatchString(subdomain) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "subdomain contains invalid characters"})
 		return
 	}
