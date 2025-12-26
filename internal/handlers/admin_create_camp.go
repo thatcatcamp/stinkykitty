@@ -452,6 +452,11 @@ func createCampStep2(c *gin.Context) {
 				<h3>Or Create New User</h3>
 
 				<div class="form-group">
+					<label for="new-name">Name</label>
+					<input type="text" id="new-name" name="new_name" placeholder="Jane Doe">
+				</div>
+
+				<div class="form-group">
 					<label for="new-email">Email</label>
 					<input type="email" id="new-email" name="new_email" placeholder="jane@example.com">
 				</div>
@@ -494,6 +499,7 @@ func createCampStep2(c *gin.Context) {
 			} else {
 				// New user - pass as form data
 				const formData = new FormData(this);
+				nextUrl += '&new_name=' + encodeURIComponent(formData.get('new_name'));
 				nextUrl += '&new_email=' + encodeURIComponent(formData.get('new_email'));
 				nextUrl += '&new_password=' + encodeURIComponent(formData.get('new_password'));
 			}
@@ -510,6 +516,7 @@ func createCampStep2(c *gin.Context) {
 func createCampStep3(c *gin.Context) {
 	subdomain := c.Query("subdomain")
 	userID := c.Query("user_id")
+	newName := c.Query("new_name")
 	newEmail := c.Query("new_email")
 	newPassword := c.Query("new_password")
 
@@ -697,6 +704,7 @@ func createCampStep3(c *gin.Context) {
 			<form id="create-form" method="POST" action="/admin/create-camp-submit">
 				<input type="hidden" name="subdomain" value="` + subdomain + `">
 				<input type="hidden" name="user_id" value="` + userID + `">
+				<input type="hidden" name="new_name" value="` + newName + `">
 				<input type="hidden" name="new_email" value="` + newEmail + `">
 				<input type="hidden" name="new_password" value="` + newPassword + `">
 
@@ -738,6 +746,7 @@ func CreateCampSubmitHandler(c *gin.Context) {
 
 	subdomain := c.PostForm("subdomain")
 	userIDStr := c.PostForm("user_id")
+	_ = c.PostForm("new_name") // Collected but not yet stored in User model
 	newEmail := c.PostForm("new_email")
 	newPassword := c.PostForm("new_password")
 
@@ -788,6 +797,13 @@ func CreateCampSubmitHandler(c *gin.Context) {
 		return
 	}
 
+	// Find the homepage (published page with slug "/")
+	var homepage models.Page
+	if err := db.GetDB().Where("site_id = ? AND slug = ?", site.ID, "/").First(&homepage).Error; err != nil {
+		c.String(http.StatusInternalServerError, "homepage not found")
+		return
+	}
+
 	// Redirect to edit the Hello World page
-	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/pages/%d/edit?site=%d", site.ID, site.ID))
+	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/pages/%d/edit?site=%d", homepage.ID, site.ID))
 }
