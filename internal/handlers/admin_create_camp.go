@@ -1,14 +1,19 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"html"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/sites"
+	"gorm.io/gorm"
 )
 
 // CreateCampFormHandler displays the multi-step camp creation form
@@ -287,12 +292,16 @@ func createCampStep2(c *gin.Context) {
 	var users []struct {
 		ID    uint
 		Email string
+		Name  string
 	}
-	db.GetDB().Model(&models.User{}).Select("id, email").Find(&users)
+	if err := db.GetDB().Model(&models.User{}).Select("id, email, name").Find(&users).Error; err != nil {
+		c.String(http.StatusInternalServerError, "failed to load users")
+		return
+	}
 
 	usersHTML := `<option value="">-- Create New User --</option>`
 	for _, u := range users {
-		usersHTML += `<option value="` + fmt.Sprintf("%d", u.ID) + `">` + u.Email + `</option>`
+		usersHTML += `<option value="` + fmt.Sprintf("%d", u.ID) + `">` + html.EscapeString(u.Email) + ` (` + html.EscapeString(u.Name) + `)</option>`
 	}
 
 	html := `<!DOCTYPE html>
@@ -492,19 +501,30 @@ func createCampStep2(c *gin.Context) {
 			const subdomain = this.querySelector('input[name="subdomain"]').value;
 			const userId = document.getElementById('user-select').value;
 
+			// NEVER pass password in URL - use POST with hidden form instead
 			let nextUrl = '/admin/create-camp?step=3&subdomain=' + encodeURIComponent(subdomain);
 
 			if (userId) {
 				nextUrl += '&user_id=' + userId;
+				window.location.href = nextUrl;
 			} else {
-				// New user - pass as form data
-				const formData = new FormData(this);
-				nextUrl += '&new_name=' + encodeURIComponent(formData.get('new_name'));
-				nextUrl += '&new_email=' + encodeURIComponent(formData.get('new_email'));
-				nextUrl += '&new_password=' + encodeURIComponent(formData.get('new_password'));
-			}
+				// New user - POST to step 3 with form data (keeps password out of URL)
+				const form = document.createElement('form');
+				form.method = 'POST';
+				form.action = '/admin/create-camp?step=3';
 
-			window.location.href = nextUrl;
+				const fields = ['subdomain', 'new_name', 'new_email', 'new_password'];
+				fields.forEach(name => {
+					const input = document.createElement('input');
+					input.type = 'hidden';
+					input.name = name;
+					input.value = this.querySelector('[name="' + name + '"]').value;
+					form.appendChild(input);
+				});
+
+				document.body.appendChild(form);
+				form.submit();
+			}
 		});
 	</script>
 </body>
@@ -514,11 +534,20 @@ func createCampStep2(c *gin.Context) {
 }
 
 func createCampStep3(c *gin.Context) {
+	// Accept both POST (with password) and GET (existing user) to support step 2 navigation
 	subdomain := c.Query("subdomain")
+	if subdomain == "" {
+		subdomain = c.PostForm("subdomain")
+	}
+
 	userID := c.Query("user_id")
-	newName := c.Query("new_name")
-	newEmail := c.Query("new_email")
-	newPassword := c.Query("new_password")
+	if userID == "" {
+		userID = c.PostForm("user_id")
+	}
+
+	newName := c.PostForm("new_name") // Only from POST
+	newEmail := c.PostForm("new_email") // Only from POST
+	newPassword := c.PostForm("new_password") // NEVER from query params
 
 	if subdomain == "" {
 		c.Redirect(http.StatusFound, "/admin/create-camp")
@@ -529,10 +558,17 @@ func createCampStep3(c *gin.Context) {
 	if userID != "" {
 		// Existing user - fetch their email
 		var user models.User
-		db.GetDB().First(&user, userID)
-		adminDisplay = user.Email
+		if err := db.GetDB().First(&user, userID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.String(http.StatusBadRequest, "user not found")
+			} else {
+				c.String(http.StatusInternalServerError, "database error")
+			}
+			return
+		}
+		adminDisplay = html.EscapeString(user.Email)
 	} else {
-		adminDisplay = newEmail + ` (new user)`
+		adminDisplay = html.EscapeString(newEmail) + ` (new user)`
 	}
 
 	html := `<!DOCTYPE html>
@@ -688,7 +724,7 @@ func createCampStep3(c *gin.Context) {
 		<div class="review-section">
 			<div class="review-item">
 				<strong>Camp Subdomain:</strong>
-				<em>` + subdomain + `.stinkykitty.org</em>
+				<em>` + html.EscapeString(subdomain) + `.stinkykitty.org</em>
 			</div>
 			<div class="review-item">
 				<strong>Admin User:</strong>
@@ -702,14 +738,14 @@ func createCampStep3(c *gin.Context) {
 
 		<div id="form-section">
 			<form id="create-form" method="POST" action="/admin/create-camp-submit">
-				<input type="hidden" name="subdomain" value="` + subdomain + `">
-				<input type="hidden" name="user_id" value="` + userID + `">
-				<input type="hidden" name="new_name" value="` + newName + `">
-				<input type="hidden" name="new_email" value="` + newEmail + `">
-				<input type="hidden" name="new_password" value="` + newPassword + `">
+				<input type="hidden" name="subdomain" value="` + html.EscapeString(subdomain) + `">
+				<input type="hidden" name="user_id" value="` + html.EscapeString(userID) + `">
+				<input type="hidden" name="new_name" value="` + html.EscapeString(newName) + `">
+				<input type="hidden" name="new_email" value="` + html.EscapeString(newEmail) + `">
+				<input type="hidden" name="new_password" value="` + html.EscapeString(newPassword) + `">
 
 				<div class="button-group">
-					<a href="/admin/create-camp?step=2&subdomain=` + subdomain + `" class="btn btn-secondary">← Back</a>
+					<a href="/admin/create-camp?step=2&subdomain=` + html.EscapeString(subdomain) + `" class="btn btn-secondary">← Back</a>
 					<button type="submit" class="btn btn-primary">Create Camp!</button>
 				</div>
 			</form>
@@ -750,22 +786,77 @@ func CreateCampSubmitHandler(c *gin.Context) {
 	newEmail := c.PostForm("new_email")
 	newPassword := c.PostForm("new_password")
 
+	// Issue #2: SERVER-SIDE SUBDOMAIN VALIDATION
 	if subdomain == "" {
 		c.String(http.StatusBadRequest, "subdomain required")
+		return
+	}
+
+	// Normalize and validate subdomain
+	subdomain = strings.TrimSpace(subdomain)
+	if len(subdomain) < 2 || len(subdomain) > 63 {
+		c.String(http.StatusBadRequest, "subdomain must be 2-63 characters")
+		return
+	}
+
+	// Validate format (RFC 1123)
+	validSubdomain := regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+	if !validSubdomain.MatchString(subdomain) {
+		c.String(http.StatusBadRequest, "subdomain contains invalid characters")
+		return
+	}
+
+	// Check reserved subdomains
+	reservedSubdomains := map[string]bool{
+		"admin": true, "api": true, "www": true, "mail": true,
+		"ftp": true, "smtp": true, "pop": true, "imap": true,
+		"stinky": true, "status": true,
+	}
+	if reservedSubdomains[subdomain] {
+		c.String(http.StatusBadRequest, "subdomain is reserved")
 		return
 	}
 
 	var ownerID uint
 
 	if userIDStr != "" {
-		// Use existing user
+		// Issue #7: INTEGER PARSING VALIDATION
 		var tempID uint
-		fmt.Sscanf(userIDStr, "%d", &tempID)
+		if _, err := fmt.Sscanf(userIDStr, "%d", &tempID); err != nil || tempID == 0 {
+			c.String(http.StatusBadRequest, "invalid user id")
+			return
+		}
 		ownerID = tempID
 	} else {
 		// Create new user
 		if newEmail == "" || newPassword == "" {
 			c.String(http.StatusBadRequest, "new user fields required")
+			return
+		}
+
+		// Issue #3: EMAIL VALIDATION
+		emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+		if !emailRegex.MatchString(newEmail) {
+			c.String(http.StatusBadRequest, "invalid email format")
+			return
+		}
+
+		// Check for existing email
+		var existingUser models.User
+		result := db.GetDB().Where("email = ?", newEmail).First(&existingUser)
+		if result.Error == nil {
+			// User with this email already exists
+			c.String(http.StatusBadRequest, "email already in use")
+			return
+		}
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.String(http.StatusInternalServerError, "database error")
+			return
+		}
+
+		// Issue #4: PASSWORD STRENGTH REQUIREMENTS
+		if len(newPassword) < 8 {
+			c.String(http.StatusBadRequest, "password must be at least 8 characters")
 			return
 		}
 
@@ -797,10 +888,14 @@ func CreateCampSubmitHandler(c *gin.Context) {
 		return
 	}
 
-	// Find the homepage (published page with slug "/")
+	// Issue #6: DATABASE ERROR HANDLING - Find the homepage (published page with slug "/")
 	var homepage models.Page
 	if err := db.GetDB().Where("site_id = ? AND slug = ?", site.ID, "/").First(&homepage).Error; err != nil {
-		c.String(http.StatusInternalServerError, "homepage not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.String(http.StatusInternalServerError, "homepage not found after creation")
+		} else {
+			c.String(http.StatusInternalServerError, "database error")
+		}
 		return
 	}
 

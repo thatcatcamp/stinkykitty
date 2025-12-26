@@ -156,6 +156,7 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.DELETE("/sites/:id/delete", handlers.DeleteSiteHandler)
 					// Create camp form
 					adminGroup.GET("/create-camp", handlers.CreateCampFormHandler)
+					adminGroup.POST("/create-camp", handlers.CreateCampFormHandler) // Handle POST for step 3
 					adminGroup.POST("/create-camp-submit", handlers.CreateCampSubmitHandler)
 					// API endpoints
 					adminGroup.GET("/api/subdomain-check", handlers.SubdomainCheckHandler)
