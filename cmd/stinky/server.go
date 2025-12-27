@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,10 +54,21 @@ var serverStartCmd = &cobra.Command{
 		schedulerDone := scheduler.Start()
 		log.Println("Backup scheduler started")
 
-		// TODO: Integrate graceful shutdown to stop scheduler
-		// When server is shutting down, call: scheduler.Stop()
-		// And wait for: <-schedulerDone
-		_ = schedulerDone // Prevent unused variable error
+		// Setup signal handling for graceful shutdown
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			sig := <-sigChan
+			log.Printf("Received signal: %v, shutting down gracefully...", sig)
+			scheduler.Stop()
+		}()
+
+		// Wait for scheduler to finish in a separate goroutine
+		go func() {
+			<-schedulerDone
+			log.Println("Backup scheduler stopped")
+		}()
 
 		// Create Gin router
 		r := gin.Default()
@@ -75,7 +89,12 @@ var serverStartCmd = &cobra.Command{
 
 		// Get global IP blocklist from config
 		var blocklist []string
-		// TODO: Load from config when we add security.blocked_ips to config schema
+		blocklistJSON := config.GetString("security.blocked_ips")
+		if blocklistJSON != "" {
+			if err := json.Unmarshal([]byte(blocklistJSON), &blocklist); err != nil {
+				log.Printf("Warning: failed to parse security.blocked_ips config: %v", err)
+			}
+		}
 
 		// Create rate limiter for admin routes
 		loginRateLimiter := middleware.NewRateLimiter(5, time.Minute)
