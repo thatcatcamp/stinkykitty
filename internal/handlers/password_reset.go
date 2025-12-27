@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/email"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
@@ -53,7 +54,11 @@ func RequestPasswordResetSubmitHandler(c *gin.Context) {
 
 	svc, err := email.NewEmailService()
 	if err == nil {
-		resetURL := "https://campasaur.us/reset-confirm?token=" + token
+		baseDomain := config.GetString("server.base_domain")
+		if baseDomain == "" {
+			baseDomain = "campasaur.us"
+		}
+		resetURL := fmt.Sprintf("https://%s/reset-confirm?token=%s", baseDomain, token)
 		svc.SendPasswordReset(emailAddr, resetURL)
 	}
 

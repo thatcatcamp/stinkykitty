@@ -459,28 +459,28 @@ func createCampStep2(c *gin.Context) {
 			<input type="hidden" name="subdomain" value="` + subdomain + `">
 
 			<div class="form-group">
-				<label for="user-select">Select Existing User</label>
+				<label for="user-select">Admin User</label>
 				<select id="user-select" name="user_id" onchange="toggleNewUserForm()">
 					` + usersHTML + `
 				</select>
 			</div>
 
 			<div id="new-user-fields" class="toggle-section">
-				<h3>Or Create New User</h3>
-
-				<div class="form-group">
-					<label for="new-name">Name</label>
-					<input type="text" id="new-name" name="new_name" placeholder="Jane Doe">
+				<div style="background: #f0f4f8; padding: var(--spacing-base); border-radius: var(--radius-sm); margin-bottom: var(--spacing-md);">
+					<p style="margin: 0; font-size: 12px; color: var(--color-text-secondary);">A new user will be created with:</p>
+					<p style="margin: var(--spacing-xs) 0 0 0; font-weight: 600; font-size: 13px;">
+						<span id="suggested-email">admin@` + subdomain + `.campasaur.us</span>
+					</p>
 				</div>
 
 				<div class="form-group">
-					<label for="new-email">Email</label>
-					<input type="email" id="new-email" name="new_email" placeholder="jane@example.com">
+					<label for="new-email">Email Address</label>
+					<input type="email" id="new-email" name="new_email" value="admin@` + subdomain + `.campasaur.us" placeholder="email@example.com" required>
 				</div>
 
 				<div class="form-group">
 					<label for="new-password">Password</label>
-					<input type="password" id="new-password" name="new_password" placeholder="••••••••">
+					<input type="password" id="new-password" name="new_password" placeholder="••••••••" minlength="8" required>
 				</div>
 			</div>
 
@@ -894,7 +894,11 @@ func CreateCampSubmitHandler(c *gin.Context) {
 		// Send welcome email to new user
 		svc, err := email.NewEmailService()
 		if err == nil {
-			loginURL := "https://campasaur.us/admin/login"
+			baseDomain := config.GetString("server.base_domain")
+			if baseDomain == "" {
+				baseDomain = "campasaur.us"
+			}
+			loginURL := fmt.Sprintf("https://%s/admin/login", baseDomain)
 			if err := svc.SendNewUserWelcome(newEmail, loginURL); err != nil {
 				log.Printf("Warning: failed to send welcome email: %v", err)
 			}
