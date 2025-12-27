@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -66,8 +67,8 @@ func ExportSiteHandler(db *gorm.DB) gin.HandlerFunc {
 
 // deleteExportFile removes an export file
 func deleteExportFile(filePath string) error {
-	// In tests, we might want to keep the file
-	// For now, skip deletion to allow verification
-	// TODO: Implement proper cleanup (maybe after download completes)
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("failed to delete export file: %w", err)
+	}
 	return nil
 }
