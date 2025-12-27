@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/email"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/sites"
 	"gorm.io/gorm"
@@ -889,7 +891,16 @@ func CreateCampSubmitHandler(c *gin.Context) {
 			return
 		}
 
-		ownerID = newUser.ID
+		// Send welcome email to new user
+		svc, err := email.NewEmailService()
+		if err == nil {
+			loginURL := "https://campasaur.us/admin/login"
+			if err := svc.SendNewUserWelcome(newEmail, loginURL); err != nil {
+				log.Printf("Warning: failed to send welcome email: %v", err)
+			}
+		}
+
+	ownerID = newUser.ID
 	}
 
 	// Create site with Hello World page
