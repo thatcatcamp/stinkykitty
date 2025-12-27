@@ -14,6 +14,8 @@ type User struct {
 	Email         string `gorm:"uniqueIndex;not null"`
 	PasswordHash  string `gorm:"not null"`
 	IsGlobalAdmin bool   `gorm:"default:false"`
+	ResetToken    string `gorm:"index"`
+	ResetExpires  time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DeletedAt     gorm.DeletedAt `gorm:"index"`
