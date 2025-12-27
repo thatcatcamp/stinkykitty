@@ -3,9 +3,12 @@ package backup
 import (
 	"archive/tar"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -330,4 +333,64 @@ func createTestBackup(backupPath, sourceDir string) error {
 		_, err = io.Copy(tw, file)
 		return err
 	})
+}
+
+// TestCleanupOldBackups verifies that old backups are deleted, keeping only the most recent ones
+func TestCleanupOldBackups(t *testing.T) {
+	tempDir := t.TempDir()
+	backupPath := filepath.Join(tempDir, "backups")
+	manager := NewBackupManager(backupPath)
+
+	// Create 15 old backup files
+	systemDir := filepath.Join(backupPath, "system")
+	if err := os.MkdirAll(systemDir, 0755); err != nil {
+		t.Fatalf("Failed to create system directory: %v", err)
+	}
+
+	for i := 1; i <= 15; i++ {
+		backupFile := filepath.Join(systemDir, fmt.Sprintf("stinkykitty-2025-01-%02d-120000.tar.gz", i))
+		if err := os.WriteFile(backupFile, []byte("backup content"), 0644); err != nil {
+			t.Fatalf("Failed to create backup file: %v", err)
+		}
+	}
+
+	// Verify 15 files exist
+	files, err := os.ReadDir(systemDir)
+	if err != nil {
+		t.Fatalf("Failed to read backup directory: %v", err)
+	}
+	if len(files) != 15 {
+		t.Fatalf("Expected 15 backup files, got %d", len(files))
+	}
+
+	// Run cleanup (keep last 10)
+	if err := manager.CleanupOldBackups(10); err != nil {
+		t.Fatalf("CleanupOldBackups failed: %v", err)
+	}
+
+	// Verify only 10 files remain (the most recent ones)
+	files, err = os.ReadDir(systemDir)
+	if err != nil {
+		t.Fatalf("Failed to read backup directory after cleanup: %v", err)
+	}
+	if len(files) != 10 {
+		t.Fatalf("Expected 10 backup files after cleanup, got %d", len(files))
+	}
+
+	// Verify the remaining files are the most recent ones (6-15)
+	// Since all files have the same modification time, verify we have exactly 10 files
+	// and that the deleted files are among 1-5
+	fileNames := make([]string, 0, len(files))
+	for _, f := range files {
+		fileNames = append(fileNames, f.Name())
+	}
+	sort.Strings(fileNames)
+
+	// Should have files 6-15 (files 06-15 after zero-padding)
+	expectedPattern := regexp.MustCompile(`stinkykitty-2025-01-(06|07|08|09|10|11|12|13|14|15)-120000\.tar\.gz`)
+	for _, name := range fileNames {
+		if !expectedPattern.MatchString(name) {
+			t.Errorf("Unexpected backup file kept: %s, expected 06-15", name)
+		}
+	}
 }

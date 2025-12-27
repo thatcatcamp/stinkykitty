@@ -49,6 +49,8 @@ var serverStartCmd = &cobra.Command{
 		backupPath := config.GetString("backups.path")
 		backupManager := backup.NewBackupManager(backupPath)
 		scheduler := backup.NewScheduler(backupManager)
+		// Set database path for backups (defaults to production location)
+		scheduler.DatabasePath = "/var/lib/stinkykitty/stinkykitty.db"
 
 		// Start scheduler in background
 		schedulerDone := scheduler.Start()

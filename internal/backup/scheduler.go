@@ -9,6 +9,7 @@ import (
 // Scheduler handles automatic backup scheduling
 type Scheduler struct {
 	Manager        *BackupManager
+	DatabasePath   string            // Path to database file for backup
 	ticker         *time.Ticker
 	done           chan bool
 	stopChan       chan bool
@@ -65,14 +66,18 @@ func (s *Scheduler) Stop() {
 
 // runBackup performs a single backup operation
 func (s *Scheduler) runBackup() error {
-	// TODO: Integrate with database for actual backup
-	// For now, create empty backup for testing
-	_, err := s.Manager.CreateBackup("")
+	// Create backup with database path
+	_, err := s.Manager.CreateBackup(s.DatabasePath)
 	if err != nil {
 		return fmt.Errorf("backup creation failed: %w", err)
 	}
 
-	// TODO: Delete old backups (keep last 10)
+	// Delete old backups (keep last 10)
+	if err := s.Manager.CleanupOldBackups(10); err != nil {
+		log.Printf("Warning: backup cleanup failed: %v\n", err)
+		// Don't fail the backup operation if cleanup fails
+	}
+
 	return nil
 }
 

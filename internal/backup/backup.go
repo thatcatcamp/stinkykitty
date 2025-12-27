@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 )
 
@@ -262,6 +263,57 @@ func (bm *BackupManager) RestoreBackup(filename string) error {
 			if err := os.Chmod(targetPath, os.FileMode(header.Mode)); err != nil {
 				return fmt.Errorf("failed to set permissions for %s: %w", targetPath, err)
 			}
+		}
+	}
+
+	return nil
+}
+
+// CleanupOldBackups deletes old backups, keeping only the most recent N backups
+func (bm *BackupManager) CleanupOldBackups(keepCount int) error {
+	systemDir := filepath.Join(bm.BackupPath, "system")
+
+	// Read all backup files
+	entries, err := os.ReadDir(systemDir)
+	if err != nil {
+		// Directory might not exist yet, which is fine
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to read backup directory: %w", err)
+	}
+
+	// Filter and sort backup files by modification time (newest first)
+	var backupFiles []os.DirEntry
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".gz" {
+			backupFiles = append(backupFiles, entry)
+		}
+	}
+
+	// If we have fewer backups than the limit, nothing to do
+	if len(backupFiles) <= keepCount {
+		return nil
+	}
+
+	// Sort by modification time (newest first), with filename as fallback
+	sort.Slice(backupFiles, func(i, j int) bool {
+		iInfo, _ := backupFiles[i].Info()
+		jInfo, _ := backupFiles[j].Info()
+		iTime := iInfo.ModTime()
+		jTime := jInfo.ModTime()
+		if !iTime.Equal(jTime) {
+			return iTime.After(jTime)
+		}
+		// Fall back to filename comparison for files with same modification time
+		return backupFiles[i].Name() > backupFiles[j].Name()
+	})
+
+	// Delete old backups beyond the keep count
+	for i := keepCount; i < len(backupFiles); i++ {
+		filePath := filepath.Join(systemDir, backupFiles[i].Name())
+		if err := os.Remove(filePath); err != nil {
+			return fmt.Errorf("failed to delete backup %s: %w", backupFiles[i].Name(), err)
 		}
 	}
 
