@@ -140,6 +140,13 @@ var serverStartCmd = &cobra.Command{
 					c.Redirect(302, "/admin/login")
 				})
 
+				// Password reset routes (no auth required)
+				adminGroup.GET("/reset-password", handlers.RequestPasswordResetHandler)
+				adminGroup.POST("/reset-password", handlers.RequestPasswordResetSubmitHandler)
+				adminGroup.GET("/reset-sent", handlers.ResetSentHandler)
+				adminGroup.GET("/reset-confirm", handlers.ResetConfirmHandler)
+				adminGroup.POST("/reset-confirm", handlers.ResetConfirmSubmitHandler)
+
 				// Logout route (auth required)
 				adminGroup.POST("/logout", auth.RequireAuth(), handlers.LogoutHandler)
 
