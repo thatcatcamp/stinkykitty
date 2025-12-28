@@ -9,7 +9,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/themes"
 )
 
-// AdminSettingsHandler shows the settings form for theme palette and dark mode
+// AdminSettingsHandler shows the settings form for site information and theme settings
 func AdminSettingsHandler(c *gin.Context) {
 	// Get site from context
 	siteVal, exists := c.Get("site")
@@ -43,7 +43,7 @@ func AdminSettingsHandler(c *gin.Context) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Settings - StinkyKitty</title>
+    <title>Site Settings - StinkyKitty</title>
     <style>
         ` + GetDesignSystemCSS() + `
 
@@ -151,6 +151,21 @@ func AdminSettingsHandler(c *gin.Context) {
             border-color: var(--color-accent);
         }
 
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: var(--spacing-sm) var(--spacing-base);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            background: var(--color-bg-base);
+            color: var(--color-text-primary);
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: var(--color-accent);
+        }
+
         .checkbox-group {
             display: flex;
             align-items: center;
@@ -234,7 +249,7 @@ func AdminSettingsHandler(c *gin.Context) {
             <div class="header-content">
                 <div class="header-left">
                     <a href="/admin/pages" class="back-link">← Pages</a>
-                    <h1>Theme Settings</h1>
+                    <h1>Site Settings</h1>
                 </div>
             </div>
         </div>
@@ -242,7 +257,44 @@ func AdminSettingsHandler(c *gin.Context) {
         <div class="container">
             <form method="POST" action="/admin/settings">
                 <div class="card">
-                    <h2 class="card-title">Theme Palette</h2>
+                    <h2 class="card-title">Site Information</h2>
+                    <p class="card-description">Configure your site's basic information and metadata</p>
+
+                    <div class="form-group">
+                        <label for="site_title">Site Title</label>
+                        <input type="text" id="site_title" name="site_title" value="` + site.SiteTitle + `" placeholder="My Camp Name">
+                        <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
+                            The main title of your website
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="site_tagline">Site Tagline</label>
+                        <input type="text" id="site_tagline" name="site_tagline" value="` + site.SiteTagline + `" placeholder="Where adventure begins">
+                        <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
+                            A brief description or slogan for your site
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="google_analytics_id">Google Analytics Tracking ID</label>
+                        <input type="text" id="google_analytics_id" name="google_analytics_id" value="` + site.GoogleAnalyticsID + `" placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX">
+                        <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
+                            Enter your Google Analytics tracking ID to enable analytics tracking
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="copyright_text">Copyright Text</label>
+                        <input type="text" id="copyright_text" name="copyright_text" value="` + site.CopyrightText + `" placeholder="© 2025 Your Camp Name. All rights reserved.">
+                        <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
+                            Custom copyright text for your site footer. Use {year} for current year, {site} for site name.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-title">Theme Settings</h2>
                     <p class="card-description">Choose a color palette for your site</p>
 
                     <div class="form-group">
@@ -279,7 +331,7 @@ func AdminSettingsHandler(c *gin.Context) {
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
-// AdminSettingsSaveHandler saves the theme settings
+// AdminSettingsSaveHandler saves the site information and theme settings
 func AdminSettingsSaveHandler(c *gin.Context) {
 	// Get site from context
 	siteVal, exists := c.Get("site")
@@ -289,7 +341,13 @@ func AdminSettingsSaveHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
-	// Get form values
+	// Get site information form values
+	siteTitle := c.PostForm("site_title")
+	siteTagline := c.PostForm("site_tagline")
+	googleAnalyticsID := c.PostForm("google_analytics_id")
+	copyrightText := c.PostForm("copyright_text")
+
+	// Get theme form values
 	palette := c.PostForm("palette")
 	darkMode := c.PostForm("dark_mode") == "true"
 
@@ -308,7 +366,11 @@ func AdminSettingsSaveHandler(c *gin.Context) {
 		palette = "slate"
 	}
 
-	// Update site record
+	// Update site record with all fields
+	site.SiteTitle = siteTitle
+	site.SiteTagline = siteTagline
+	site.GoogleAnalyticsID = googleAnalyticsID
+	site.CopyrightText = copyrightText
 	site.ThemePalette = palette
 	site.DarkMode = darkMode
 
