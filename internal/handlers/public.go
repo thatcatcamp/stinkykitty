@@ -93,6 +93,20 @@ func getCopyrightText(site *models.Site) string {
 	return copyright
 }
 
+// renderHeader generates header HTML for pages
+func renderHeader(site *models.Site, navigationLinks string) string {
+	return fmt.Sprintf(`
+<header class="site-header">
+	<div class="site-header-content">
+		<a href="/" class="site-header-logo">%s</a>
+		<nav class="site-header-nav">
+			%s
+			<a href="/admin/login" class="site-header-login">Login</a>
+		</nav>
+	</div>
+</header>`, html.EscapeString(site.SiteTitle), navigationLinks)
+}
+
 // renderFooter generates footer HTML for pages
 func renderFooter(site *models.Site, includeHomeLink bool) string {
 	links := ""
@@ -217,15 +231,7 @@ func ServeHomepage(c *gin.Context) {
 	%s
 </head>
 <body>
-	<header class="site-header">
-		<div class="site-header-content">
-			<a href="/" class="site-header-logo">%s</a>
-			<nav class="site-header-nav">
-				%s
-				<a href="/admin/login" class="site-header-login">Login</a>
-			</nav>
-		</div>
-	</header>
+	%s
 	%s
 	<div class="search-bar">
 		<form action="/search" method="GET">
@@ -238,7 +244,7 @@ func ServeHomepage(c *gin.Context) {
 	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), html.EscapeString(site.SiteTitle), navigationLinks, navigation, page.Title, content.String(), renderFooter(site, false))
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), navigation, page.Title, content.String(), renderFooter(site, false))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -362,15 +368,7 @@ func ServePage(c *gin.Context) {
 	%s
 </head>
 <body>
-	<header class="site-header">
-		<div class="site-header-content">
-			<a href="/" class="site-header-logo">%s</a>
-			<nav class="site-header-nav">
-				%s
-				<a href="/admin/login" class="site-header-login">Login</a>
-			</nav>
-		</div>
-	</header>
+	%s
 	%s
 	<div class="search-bar">
 		<form action="/search" method="GET">
@@ -383,7 +381,7 @@ func ServePage(c *gin.Context) {
 	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), html.EscapeString(site.SiteTitle), navigationLinks, navigation, page.Title, content.String(), renderFooter(site, true))
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), navigation, page.Title, content.String(), renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -486,15 +484,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 	</style>
 </head>
 <body>
-	<header class="site-header">
-		<div class="site-header-content">
-			<a href="/" class="site-header-logo">%s</a>
-			<nav class="site-header-nav">
-				%s
-				<a href="/admin/login" class="site-header-login">Login</a>
-			</nav>
-		</div>
-	</header>
+	%s
 	<div class="container">
 		%s
 		<div class="success-message">
@@ -504,7 +494,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, html.EscapeString(site.SiteTitle), navigationLinks, navigation, renderFooter(site, true))
+</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), navigation, renderFooter(site, true))
 
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(successHTML))
 		return
@@ -549,15 +539,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 	</style>
 </head>
 <body>
-	<header class="site-header">
-		<div class="site-header-content">
-			<a href="/" class="site-header-logo">%s</a>
-			<nav class="site-header-nav">
-				%s
-				<a href="/admin/login" class="site-header-login">Login</a>
-			</nav>
-		</div>
-	</header>
+	%s
 	<div class="container">
 		%s
 		<h1>Contact Us</h1>
@@ -586,7 +568,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, html.EscapeString(site.SiteTitle), navigationLinks, navigation, renderFooter(site, true))
+</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), navigation, renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(formHTML))
 }

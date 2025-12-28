@@ -154,5 +154,18 @@ input::placeholder { color: var(--color-text-secondary); }
 	opacity: 0.9;
 	color: white;
 }
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+	.site-header-content {
+		flex-direction: column;
+		gap: var(--spacing-base);
+	}
+
+	.site-header-nav {
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+}
 `
 }
