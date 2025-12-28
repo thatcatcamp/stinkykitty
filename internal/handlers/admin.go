@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
@@ -13,7 +14,7 @@ import (
 
 // LoginHandler handles admin login requests
 func LoginHandler(c *gin.Context) {
-	email := c.PostForm("email")
+	email := strings.ToLower(strings.TrimSpace(c.PostForm("email")))
 	password := c.PostForm("password")
 
 	// Get site from context
@@ -694,6 +695,160 @@ func DashboardHandler(c *gin.Context) {
             if (e.target === this) cancelDelete();
         };
     </script>
+</body>
+</html>`
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+// DocsHandler displays documentation page
+func DocsHandler(c *gin.Context) {
+	html := `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - Stinky Kitty CMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #1a1a1a;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        p, li {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: "Courier New", monospace;
+            color: #d63384;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #4CAF50;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/admin" class="back-link">← Back to Dashboard</a>
+
+        <h1>Stinky Kitty CMS Documentation</h1>
+
+        <div class="section">
+            <h2>Getting Started</h2>
+            <p>Stinky Kitty is a multi-tenant CMS platform designed for managing camp websites. Each camp (site) has its own administrators and content.</p>
+        </div>
+
+        <div class="section">
+            <h2>Creating a New Camp</h2>
+            <ol>
+                <li>Click "Create New Camp" from the dashboard</li>
+                <li>Enter the camp name and choose a subdomain</li>
+                <li>Create an administrator account with an email address</li>
+                <li>The new administrator will receive a password setup email</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>Managing Pages</h2>
+            <p>Each camp can have multiple pages. Pages are composed of reusable content blocks.</p>
+            <ul>
+                <li>Click "Pages" to view and manage your site's pages</li>
+                <li>Create new pages with custom content blocks</li>
+                <li>Use blocks to structure your content (text, images, etc.)</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Camp Settings</h2>
+            <p>Configure your camp's basic information:</p>
+            <ul>
+                <li>Camp name and description</li>
+                <li>Custom domain (optional)</li>
+                <li>Site-level administrators</li>
+                <li>Email configuration</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Content Blocks</h2>
+            <p>Pages are built from reusable content blocks. Supported block types include:</p>
+            <ul>
+                <li><code>text</code> - Rich text content</li>
+                <li><code>heading</code> - Section headings</li>
+                <li><code>image</code> - Image blocks</li>
+                <li><code>button</code> - Call-to-action buttons</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Exporting Content</h2>
+            <p>Export your camp's content using the Export feature. Content is exported in a portable format for backup or migration.</p>
+        </div>
+
+        <div class="footer">
+            <p>For more help, please contact the site administrator.</p>
+        </div>
+    </div>
 </body>
 </html>`
 

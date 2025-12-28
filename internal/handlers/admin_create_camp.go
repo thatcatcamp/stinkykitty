@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
@@ -467,20 +468,16 @@ func createCampStep2(c *gin.Context) {
 
 			<div id="new-user-fields" class="toggle-section">
 				<div style="background: #f0f4f8; padding: var(--spacing-base); border-radius: var(--radius-sm); margin-bottom: var(--spacing-md);">
-					<p style="margin: 0; font-size: 12px; color: var(--color-text-secondary);">A new user will be created with:</p>
+					<p style="margin: 0; font-size: 12px; color: var(--color-text-secondary);">A new user will be created with the email:</p>
 					<p style="margin: var(--spacing-xs) 0 0 0; font-weight: 600; font-size: 13px;">
 						<span id="suggested-email">admin@` + subdomain + `.campasaur.us</span>
 					</p>
+					<p style="margin: var(--spacing-xs) 0 0 0; font-size: 11px; color: var(--color-text-secondary);">They will receive an email with instructions to set their password.</p>
 				</div>
 
 				<div class="form-group">
 					<label for="new-email">Email Address</label>
 					<input type="email" id="new-email" name="new_email" value="admin@` + subdomain + `.campasaur.us" placeholder="email@example.com" required>
-				</div>
-
-				<div class="form-group">
-					<label for="new-password">Password</label>
-					<input type="password" id="new-password" name="new_password" placeholder="••••••••" minlength="8" required>
 				</div>
 			</div>
 
@@ -516,24 +513,30 @@ func createCampStep2(c *gin.Context) {
 				nextUrl += '&user_id=' + userId;
 				window.location.href = nextUrl;
 			} else {
-				// New user - POST to step 3 with form data (keeps password out of URL)
+				// New user - POST to step 3 with form data
 				const form = document.createElement('form');
 				form.method = 'POST';
 				form.action = '/admin/create-camp?step=3';
 
-				const fields = ['subdomain', 'new_name', 'new_email', 'new_password'];
+				const fields = ['subdomain', 'new_email'];
 				fields.forEach(name => {
 					const input = document.createElement('input');
 					input.type = 'hidden';
 					input.name = name;
-					input.value = this.querySelector('[name="' + name + '"]').value;
-					form.appendChild(input);
+					const element = this.querySelector('[name="' + name + '"]');
+					if (element) {
+						input.value = element.value;
+						form.appendChild(input);
+					}
 				});
 
 				document.body.appendChild(form);
 				form.submit();
 			}
 		});
+
+		// Call on page load to show fields if "Create New User" is selected
+		toggleNewUserForm();
 	</script>
 </body>
 </html>`
@@ -559,9 +562,7 @@ func createCampStep3(c *gin.Context) {
 		userID = c.PostForm("user_id")
 	}
 
-	newName := c.PostForm("new_name") // Only from POST
 	newEmail := c.PostForm("new_email") // Only from POST
-	newPassword := c.PostForm("new_password") // NEVER from query params
 
 	if subdomain == "" {
 		c.Redirect(http.StatusFound, "/admin/create-camp")
@@ -754,9 +755,7 @@ func createCampStep3(c *gin.Context) {
 			<form id="create-form" method="POST" action="/admin/create-camp-submit">
 				<input type="hidden" name="subdomain" value="` + html.EscapeString(subdomain) + `">
 				<input type="hidden" name="user_id" value="` + html.EscapeString(userID) + `">
-				<input type="hidden" name="new_name" value="` + html.EscapeString(newName) + `">
 				<input type="hidden" name="new_email" value="` + html.EscapeString(newEmail) + `">
-				<input type="hidden" name="new_password" value="` + html.EscapeString(newPassword) + `">
 
 				<div class="button-group">
 					<a href="/admin/create-camp?step=2&subdomain=` + html.EscapeString(subdomain) + `" class="btn btn-secondary">← Back</a>
@@ -796,9 +795,7 @@ func CreateCampSubmitHandler(c *gin.Context) {
 
 	subdomain := c.PostForm("subdomain")
 	userIDStr := c.PostForm("user_id")
-	_ = c.PostForm("new_name") // Collected but not yet stored in User model
-	newEmail := c.PostForm("new_email")
-	newPassword := c.PostForm("new_password")
+	newEmail := strings.ToLower(strings.TrimSpace(c.PostForm("new_email")))
 
 	// Issue #2: SERVER-SIDE SUBDOMAIN VALIDATION
 	if subdomain == "" {
@@ -843,8 +840,8 @@ func CreateCampSubmitHandler(c *gin.Context) {
 		ownerID = tempID
 	} else {
 		// Create new user
-		if newEmail == "" || newPassword == "" {
-			c.String(http.StatusBadRequest, "new user fields required")
+		if newEmail == "" {
+			c.String(http.StatusBadRequest, "email required for new user")
 			return
 		}
 
@@ -855,11 +852,11 @@ func CreateCampSubmitHandler(c *gin.Context) {
 			return
 		}
 
-		// Check for existing email
+		// Check for existing active email
 		var existingUser models.User
 		result := db.GetDB().Where("email = ?", newEmail).First(&existingUser)
 		if result.Error == nil {
-			// User with this email already exists
+			// Active user with this email already exists
 			c.String(http.StatusBadRequest, "email already in use")
 			return
 		}
@@ -868,39 +865,68 @@ func CreateCampSubmitHandler(c *gin.Context) {
 			return
 		}
 
-		// Issue #4: PASSWORD STRENGTH REQUIREMENTS
-		if len(newPassword) < 8 {
-			c.String(http.StatusBadRequest, "password must be at least 8 characters")
-			return
+		// Check for soft-deleted user with this email
+		var deletedUser models.User
+		deletedResult := db.GetDB().Unscoped().Where("email = ? AND deleted_at IS NOT NULL", newEmail).First(&deletedUser)
+
+		var newUser *models.User
+		if deletedResult.Error == nil {
+			// Found a soft-deleted user - restore them
+			log.Printf("INFO: Restoring soft-deleted user with email %s (ID: %d)", newEmail, deletedUser.ID)
+			newUser = &deletedUser
+			// Clear the soft delete and reset their data
+			if err := db.GetDB().Unscoped().Model(newUser).Updates(map[string]interface{}{
+				"deleted_at":    nil,
+				"password_hash": "",
+				"reset_token":   "",
+				"reset_expires": time.Time{},
+			}).Error; err != nil {
+				c.String(http.StatusInternalServerError, "failed to restore user")
+				return
+			}
+		} else {
+			// No deleted user found - create new user
+			newUser = &models.User{
+				Email:        newEmail,
+				PasswordHash: "", // No password set initially
+			}
+
+			if err := db.GetDB().Create(newUser).Error; err != nil {
+				c.String(http.StatusInternalServerError, "failed to create user")
+				return
+			}
 		}
 
-		// Hash password
-		hash, err := auth.HashPassword(newPassword)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "failed to process password")
-			return
+		// Generate reset token and send password setup email
+		token, tokenErr := auth.GenerateResetToken()
+		if tokenErr != nil {
+			log.Printf("ERROR: Failed to generate reset token: %v", tokenErr)
 		}
 
-		newUser := &models.User{
-			Email:        newEmail,
-			PasswordHash: hash,
+		updateResult := db.GetDB().Model(&newUser).Updates(map[string]interface{}{
+			"reset_token":   token,
+			"reset_expires": time.Now().Add(24 * time.Hour),
+		})
+		if updateResult.Error != nil {
+			log.Printf("ERROR: Failed to save reset token for user %s: %v", newEmail, updateResult.Error)
 		}
 
-		if err := db.GetDB().Create(newUser).Error; err != nil {
-			c.String(http.StatusInternalServerError, "failed to create user")
-			return
-		}
-
-		// Send welcome email to new user
+		log.Printf("INFO: Attempting to send password reset email to %s", newEmail)
 		svc, err := email.NewEmailService()
-		if err == nil {
+		if err != nil {
+			log.Printf("ERROR: Failed to create email service: %v", err)
+			log.Printf("ERROR: Check SMTP environment variables: SMTP, SMTP_PORT, EMAIL, SMTP_SECRET")
+		} else {
 			baseDomain := config.GetString("server.base_domain")
 			if baseDomain == "" {
 				baseDomain = "campasaur.us"
 			}
-			loginURL := fmt.Sprintf("https://%s/admin/login", baseDomain)
-			if err := svc.SendNewUserWelcome(newEmail, loginURL); err != nil {
-				log.Printf("Warning: failed to send welcome email: %v", err)
+			resetURL := fmt.Sprintf("https://%s/admin/reset-confirm?token=%s", baseDomain, token)
+			log.Printf("INFO: Reset URL: %s", resetURL)
+			if err := svc.SendPasswordReset(newEmail, resetURL); err != nil {
+				log.Printf("ERROR: Failed to send password reset email to %s: %v", newEmail, err)
+			} else {
+				log.Printf("SUCCESS: Password reset email sent to %s", newEmail)
 			}
 		}
 
@@ -915,6 +941,16 @@ func CreateCampSubmitHandler(c *gin.Context) {
 		return
 	}
 
+	// Add the owner as a site admin in site_users table
+	siteUser := &models.SiteUser{
+		SiteID: site.ID,
+		UserID: ownerID,
+		Role:   "owner",
+	}
+	if err := db.GetDB().Create(siteUser).Error; err != nil {
+		log.Printf("WARNING: Failed to create site_users entry for owner: %v", err)
+	}
+
 	// Issue #6: DATABASE ERROR HANDLING - Find the homepage (published page with slug "/")
 	var homepage models.Page
 	if err := db.GetDB().Where("site_id = ? AND slug = ?", site.ID, "/").First(&homepage).Error; err != nil {
@@ -926,6 +962,6 @@ func CreateCampSubmitHandler(c *gin.Context) {
 		return
 	}
 
-	// Redirect to edit the Hello World page
-	c.Redirect(http.StatusFound, fmt.Sprintf("/admin/pages/%d/edit?site=%d", homepage.ID, site.ID))
+	// Redirect to main dashboard (creator might not have access to the new site)
+	c.Redirect(http.StatusFound, "/admin/dashboard")
 }

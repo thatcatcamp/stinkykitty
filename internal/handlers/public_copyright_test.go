@@ -109,6 +109,49 @@ func TestGetCopyrightText(t *testing.T) {
 				"</b>",
 			},
 		},
+		{
+			name:          "Copyright symbol renders correctly",
+			copyrightText: "© {year} {site}",
+			siteTitle:     "Test Site",
+			expectedContains: []string{
+				"©", // Verify symbol is not escaped to &copy;
+				currentYear,
+				"Test Site",
+			},
+			expectedNotContain: []string{
+				"&copy;", // Should NOT be HTML entity encoded
+			},
+		},
+		{
+			name:          "Multiple placeholder instances",
+			copyrightText: "© {year}-{year} {site} by {site}",
+			siteTitle:     "Camp Site",
+			expectedContains: []string{
+				"©",
+				currentYear + "-" + currentYear,
+				"Camp Site by Camp Site",
+			},
+			expectedNotContain: []string{
+				"{year}",
+				"{site}",
+				"&copy;",
+			},
+		},
+		{
+			name:          "Unicode characters",
+			copyrightText: "🏕️ {year} Camp {site} ™",
+			siteTitle:     "Adventure",
+			expectedContains: []string{
+				"🏕️",
+				currentYear,
+				"Camp Adventure",
+				"™",
+			},
+			expectedNotContain: []string{
+				"{year}",
+				"{site}",
+			},
+		},
 	}
 
 	for _, tt := range tests {

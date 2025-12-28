@@ -273,6 +273,10 @@ func EditPageHandler(c *gin.Context) {
 			blockTypeLabel = "Video Block"
 		} else if block.Type == "spacer" {
 			blockTypeLabel = "Spacer Block"
+		} else if block.Type == "contact" {
+			blockTypeLabel = "Contact Form Block"
+		} else if block.Type == "columns" {
+			blockTypeLabel = "Columns Block"
 		}
 
 		// Extract preview from JSON content
@@ -633,6 +637,7 @@ func EditPageHandler(c *gin.Context) {
         .btn-button { background: var(--color-success); }
         .btn-video { background: var(--color-danger); }
         .btn-spacer { background: #e0e0e0; color: var(--color-text-primary); }
+        .btn-columns { background: #f59e0b; }
     </style>
 </head>
 <body>
@@ -697,6 +702,14 @@ func EditPageHandler(c *gin.Context) {
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
                         <input type="hidden" name="type" value="spacer">
                         <button type="submit" class="btn btn-spacer">+ Spacer</button>
+                    </form>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="contact">
+                        <button type="submit" class="btn btn-contact">+ Contact Form</button>
+                    </form>
+                    <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        <input type="hidden" name="type" value="columns">
+                        <button type="submit" class="btn btn-columns">+ Columns</button>
                     </form>
                 </div>
             </div>

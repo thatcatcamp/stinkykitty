@@ -54,6 +54,8 @@ func CreateBlockHandler(c *gin.Context) {
 		"button":  true,
 		"video":   true,
 		"spacer":  true,
+		"contact": true,
+		"columns": true,
 	}
 	if !validTypes[blockType] {
 		c.String(http.StatusBadRequest, "Invalid block type")
@@ -96,6 +98,10 @@ func CreateBlockHandler(c *gin.Context) {
 		blockData = `{"url":""}`
 	case "spacer":
 		blockData = `{"height":40}`
+	case "contact":
+		blockData = `{"title":"Get in Touch","subtitle":""}`
+	case "columns":
+		blockData = `{"column_count":2,"columns":[{"content":""},{"content":""}]}`
 	}
 
 	// Create new block
@@ -683,6 +689,189 @@ func EditBlockHandler(c *gin.Context) {
     </div>
 </body>
 </html>`, pageIDStr, blockIDStr, spacerData.Height, pageIDStr)
+	} else if block.Type == "contact" {
+		// Parse contact block data
+		var contactData struct {
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &contactData); err != nil {
+			contactData.Title = "Get in Touch"
+		}
+
+		// Escape contact form data before using
+		contactTitle := contactData.Title
+		contactSubtitle := contactData.Subtitle
+		// Note: We'll escape these in the template using Go's escaping
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Edit Contact Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input[type="text"],
+        textarea { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; }
+        input:focus,
+        textarea:focus { outline: none; border-color: #2563eb; }
+        .help-text { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 15px; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+        .note { background: #f0f4f8; padding: 15px; border-radius: 4px; margin-bottom: 20px; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Contact Form Block</h1>
+        <div class="note">
+            <strong>Note:</strong> This block displays a contact form where visitors can send you messages. Their email address is shown to you, but not to other visitors.
+        </div>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="title">Form Title:</label>
+            <input type="text" id="title" name="title" value="%s" placeholder="Get in Touch">
+            <p class="help-text">The heading displayed above the contact form</p>
+
+            <label for="subtitle">Form Subtitle (optional):</label>
+            <textarea id="subtitle" name="subtitle" placeholder="We'd love to hear from you!">%s</textarea>
+            <p class="help-text">Additional text displayed under the title</p>
+
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr, contactTitle, contactSubtitle, pageIDStr)
+	} else if block.Type == "columns" {
+		// Parse columns block data
+		var columnsData struct {
+			ColumnCount int `json:"column_count"`
+			Columns     []struct {
+				Content string `json:"content"`
+			} `json:"columns"`
+		}
+		if err := json.Unmarshal([]byte(block.Data), &columnsData); err != nil {
+			columnsData.ColumnCount = 2
+			columnsData.Columns = make([]struct {
+				Content string `json:"content"`
+			}, 2)
+		}
+
+		// Build column inputs HTML
+		var columnInputsHTML string
+		for i, col := range columnsData.Columns {
+			columnInputsHTML += fmt.Sprintf(`
+				<div class="column-input">
+					<label for="column_%d">Column %d:</label>
+					<textarea id="column_%d" name="column_%d" rows="6">%s</textarea>
+				</div>
+			`, i, i+1, i, i, col.Content)
+		}
+
+		html = fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Edit Columns Block</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        select, textarea { width: 100%%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; margin-bottom: 15px; font-family: system-ui; }
+        textarea { min-height: 100px; }
+        select:focus, textarea:focus { outline: none; border-color: #2563eb; }
+        .help-text { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 15px; }
+        .button-group { margin-top: 20px; display: flex; gap: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button[type="submit"] { background: #2563eb; color: white; }
+        button[type="submit"]:hover { background: #1d4ed8; }
+        a.cancel { padding: 10px 20px; background: #6b7280; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; font-weight: 600; }
+        a.cancel:hover { background: #4b5563; }
+        .columns-container { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px; }
+        .column-input { background: #f8f9fa; padding: 15px; border-radius: 4px; }
+        .note { background: #f0f4f8; padding: 15px; border-radius: 4px; margin-bottom: 20px; color: #555; }
+    </style>
+    <script>
+        function updateColumnInputs() {
+            const count = parseInt(document.getElementById('column_count').value);
+            const container = document.getElementById('columns-container');
+            const currentCount = container.children.length;
+
+            if (count > currentCount) {
+                // Add new columns
+                for (let i = currentCount; i < count; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'column-input';
+                    div.innerHTML = '<label for="column_' + i + '">Column ' + (i + 1) + ':</label><textarea id="column_' + i + '" name="column_' + i + '" rows="6"></textarea>';
+                    container.appendChild(div);
+                }
+            } else if (count < currentCount) {
+                // Remove columns
+                while (container.children.length > count) {
+                    container.removeChild(container.lastChild);
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Columns Block</h1>
+        <div class="note">
+            <strong>Note:</strong> Create a multi-column layout with 2, 3, or 4 columns. Content will be displayed side by side on larger screens.
+        </div>
+        <form method="POST" action="/admin/pages/%s/blocks/%s">
+            <label for="column_count">Number of Columns:</label>
+            <select id="column_count" name="column_count" onchange="updateColumnInputs()">
+                <option value="2"%s>2 Columns</option>
+                <option value="3"%s>3 Columns</option>
+                <option value="4"%s>4 Columns</option>
+            </select>
+            <p class="help-text">Select how many columns you want in this layout</p>
+
+            <div id="columns-container" class="columns-container">
+                %s
+            </div>
+
+            <div class="button-group">
+                <button type="submit">Save &amp; Return</button>
+                <a href="/admin/pages/%s/edit" class="cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>`, pageIDStr, blockIDStr,
+			func() string {
+				if columnsData.ColumnCount == 2 {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if columnsData.ColumnCount == 3 {
+					return " selected"
+				}
+				return ""
+			}(),
+			func() string {
+				if columnsData.ColumnCount == 4 {
+					return " selected"
+				}
+				return ""
+			}(),
+			columnInputsHTML, pageIDStr)
 	} else {
 		c.String(http.StatusBadRequest, "Block type '%s' does not support editing yet", block.Type)
 		return
@@ -834,6 +1023,44 @@ func UpdateBlockHandler(c *gin.Context) {
 			height = 40
 		}
 		data := map[string]int{"height": height}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+	case "contact":
+		title := c.PostForm("title")
+		if title == "" {
+			title = "Get in Touch"
+		}
+		subtitle := c.PostForm("subtitle")
+		data := map[string]string{"title": title, "subtitle": subtitle}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to encode block data")
+			return
+		}
+		block.Data = string(jsonData)
+
+	case "columns":
+		columnCountStr := c.PostForm("column_count")
+		columnCount, err := strconv.Atoi(columnCountStr)
+		if err != nil || columnCount < 2 || columnCount > 4 {
+			columnCount = 2
+		}
+
+		// Collect column contents
+		columns := make([]map[string]string, columnCount)
+		for i := 0; i < columnCount; i++ {
+			content := c.PostForm(fmt.Sprintf("column_%d", i))
+			columns[i] = map[string]string{"content": content}
+		}
+
+		data := map[string]interface{}{
+			"column_count": columnCount,
+			"columns":      columns,
+		}
 		jsonData, err := json.Marshal(data)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Failed to encode block data")

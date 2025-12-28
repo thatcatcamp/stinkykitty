@@ -23,7 +23,7 @@ func RequestPasswordResetHandler(c *gin.Context) {
 <body>
 	<div class="container" style="max-width: 400px; margin: 50px auto;">
 		<h1>Reset Password</h1>
-		<form method="POST" action="/reset-password">
+		<form method="POST" action="/admin/reset-password">
 			<div style="margin: 20px 0;">
 				<label>Email Address:</label>
 				<input type="email" name="email" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -34,7 +34,7 @@ func RequestPasswordResetHandler(c *gin.Context) {
 	</div>
 </body>
 </html>`
-	c.HTML(http.StatusOK, "", html)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
 func RequestPasswordResetSubmitHandler(c *gin.Context) {
@@ -42,7 +42,7 @@ func RequestPasswordResetSubmitHandler(c *gin.Context) {
 
 	var user models.User
 	if err := db.GetDB().Where("email = ?", emailAddr).First(&user).Error; err != nil {
-		c.Redirect(http.StatusFound, "/reset-sent")
+		c.Redirect(http.StatusFound, "/admin/reset-sent")
 		return
 	}
 
@@ -58,11 +58,11 @@ func RequestPasswordResetSubmitHandler(c *gin.Context) {
 		if baseDomain == "" {
 			baseDomain = "campasaur.us"
 		}
-		resetURL := fmt.Sprintf("https://%s/reset-confirm?token=%s", baseDomain, token)
+		resetURL := fmt.Sprintf("https://%s/admin/reset-confirm?token=%s", baseDomain, token)
 		svc.SendPasswordReset(emailAddr, resetURL)
 	}
 
-	c.Redirect(http.StatusFound, "/reset-sent")
+	c.Redirect(http.StatusFound, "/admin/reset-sent")
 }
 
 func ResetSentHandler(c *gin.Context) {
@@ -80,7 +80,7 @@ func ResetSentHandler(c *gin.Context) {
 	</div>
 </body>
 </html>`
-	c.HTML(http.StatusOK, "", html)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
 func ResetConfirmHandler(c *gin.Context) {
@@ -101,7 +101,7 @@ func ResetConfirmHandler(c *gin.Context) {
 <body>
 	<div class="container" style="max-width: 400px; margin: 50px auto;">
 		<h1>Set New Password</h1>
-		<form method="POST" action="/reset-confirm">
+		<form method="POST" action="/admin/reset-confirm">
 			<input type="hidden" name="token" value="%s">
 			<div style="margin: 20px 0;">
 				<label>New Password:</label>
@@ -112,7 +112,7 @@ func ResetConfirmHandler(c *gin.Context) {
 	</div>
 </body>
 </html>`, GetDesignSystemCSS(), token)
-	c.HTML(http.StatusOK, "", html)
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
 func ResetConfirmSubmitHandler(c *gin.Context) {
@@ -132,5 +132,73 @@ func ResetConfirmSubmitHandler(c *gin.Context) {
 		"reset_expires": time.Time{},
 	})
 
-	c.Redirect(http.StatusFound, "/admin/login?message=Password+reset+successful")
+	// Get the sites the user has access to
+	type UserSite struct {
+		Subdomain    string
+		CustomDomain *string
+	}
+	var userSites []UserSite
+
+	// Get sites where user is owner or has site_users entry
+	db.GetDB().Raw(`
+		SELECT DISTINCT sites.subdomain, sites.custom_domain
+		FROM sites
+		LEFT JOIN site_users ON sites.id = site_users.site_id
+		WHERE sites.owner_id = ? OR site_users.user_id = ?
+		ORDER BY sites.subdomain
+	`, user.ID, user.ID).Scan(&userSites)
+
+	baseDomain := config.GetString("server.base_domain")
+	if baseDomain == "" {
+		baseDomain = "campasaur.us"
+	}
+
+	// Build site links
+	var siteLinksHTML string
+	if len(userSites) == 0 {
+		siteLinksHTML = `<p>You don't have access to any camps yet. Contact an administrator.</p>`
+	} else if len(userSites) == 1 {
+		// Single site - redirect directly
+		site := userSites[0]
+		var domain string
+		if site.CustomDomain != nil && *site.CustomDomain != "" {
+			domain = *site.CustomDomain
+		} else {
+			domain = site.Subdomain + "." + baseDomain
+		}
+		loginURL := fmt.Sprintf("https://%s/admin/login", domain)
+		c.Redirect(http.StatusFound, loginURL)
+		return
+	} else {
+		// Multiple sites - show list
+		siteLinksHTML = `<p>Choose your camp to log in:</p><ul style="list-style: none; padding: 0;">`
+		for _, site := range userSites {
+			var domain string
+			if site.CustomDomain != nil && *site.CustomDomain != "" {
+				domain = *site.CustomDomain
+			} else {
+				domain = site.Subdomain + "." + baseDomain
+			}
+			loginURL := fmt.Sprintf("https://%s/admin/login", domain)
+			siteLinksHTML += fmt.Sprintf(`<li style="margin: 10px 0;"><a href="%s" style="color: #2563eb; text-decoration: none; font-weight: 500;">%s</a></li>`, loginURL, domain)
+		}
+		siteLinksHTML += `</ul>`
+	}
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<title>Password Reset Successful - StinkyKitty</title>
+	<style>%s</style>
+</head>
+<body>
+	<div class="container" style="max-width: 600px; margin: 50px auto; text-align: center;">
+		<h1>Password Reset Successful!</h1>
+		<p style="color: #16a34a; font-weight: 500;">✓ Your password has been updated.</p>
+		%s
+	</div>
+</body>
+</html>`, GetDesignSystemCSS(), siteLinksHTML)
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }

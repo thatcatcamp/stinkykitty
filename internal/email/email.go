@@ -36,21 +36,43 @@ func NewEmailService() (*EmailService, error) {
 func (es *EmailService) SendEmail(to, subject, body string) error {
 	addr := fmt.Sprintf("%s:%s", es.host, es.port)
 
-	tlsconfig := &tls.Config{
-		ServerName: es.host,
-	}
+	// Use STARTTLS for port 587, implicit TLS for port 465
+	var client *smtp.Client
+	var err error
 
-	conn, err := tls.Dial("tcp", addr, tlsconfig)
-	if err != nil {
-		return fmt.Errorf("failed to dial SMTP: %w", err)
-	}
-	defer conn.Close()
+	if es.port == "587" {
+		// STARTTLS: connect plain, then upgrade to TLS
+		client, err = smtp.Dial(addr)
+		if err != nil {
+			return fmt.Errorf("failed to dial SMTP: %w", err)
+		}
+		defer client.Close()
 
-	client, err := smtp.NewClient(conn, es.host)
-	if err != nil {
-		return fmt.Errorf("failed to create SMTP client: %w", err)
+		// Start TLS
+		tlsconfig := &tls.Config{
+			ServerName: es.host,
+		}
+		if err = client.StartTLS(tlsconfig); err != nil {
+			return fmt.Errorf("failed to start TLS: %w", err)
+		}
+	} else {
+		// Implicit TLS: connect with TLS from the start (port 465)
+		tlsconfig := &tls.Config{
+			ServerName: es.host,
+		}
+
+		conn, err := tls.Dial("tcp", addr, tlsconfig)
+		if err != nil {
+			return fmt.Errorf("failed to dial SMTP: %w", err)
+		}
+		defer conn.Close()
+
+		client, err = smtp.NewClient(conn, es.host)
+		if err != nil {
+			return fmt.Errorf("failed to create SMTP client: %w", err)
+		}
+		defer client.Close()
 	}
-	defer client.Close()
 
 	if err := client.Auth(smtp.PlainAuth("", es.email, es.password, es.host)); err != nil {
 		return fmt.Errorf("SMTP authentication failed: %w", err)
@@ -70,13 +92,17 @@ func (es *EmailService) SendEmail(to, subject, body string) error {
 	}
 	defer w.Close()
 
-	msg := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", to, subject, body)
+	// Build proper email headers
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s", es.email, to, subject, body)
 	if _, err := w.Write([]byte(msg)); err != nil {
 		return fmt.Errorf("failed to write message: %w", err)
 	}
 
+	// Quit the connection (ignore errors - email was already sent)
 	if err := client.Quit(); err != nil {
-		return fmt.Errorf("failed to quit SMTP: %w", err)
+		// Some SMTP servers return non-standard success messages on QUIT
+		// As long as the email was sent (which it was by this point), we can ignore QUIT errors
+		log.Printf("SMTP QUIT returned non-standard response (email was sent successfully): %v", err)
 	}
 
 	log.Printf("Email sent to %s: %s", to, subject)

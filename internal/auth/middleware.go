@@ -15,21 +15,21 @@ func RequireAuth() gin.HandlerFunc {
 		// Get token from cookie
 		cookie, err := c.Cookie("stinky_token")
 		if err != nil || cookie == "" {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.Redirect(http.StatusFound, "/")
 			return
 		}
 
 		// Validate token
 		claims, err := ValidateToken(cookie)
 		if err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.Redirect(http.StatusFound, "/")
 			return
 		}
 
 		// Load user from database
 		var user models.User
 		if err := db.GetDB().First(&user, claims.UserID).Error; err != nil {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.Redirect(http.StatusFound, "/")
 			return
 		}
 
@@ -112,7 +112,7 @@ func RequireGlobalAdmin() gin.HandlerFunc {
 		// Check if user is global admin
 		userVal, exists := c.Get("user")
 		if !exists {
-			c.AbortWithStatus(http.StatusUnauthorized)
+			c.Redirect(http.StatusFound, "/")
 			return
 		}
 

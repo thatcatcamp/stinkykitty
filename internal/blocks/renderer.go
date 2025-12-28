@@ -24,6 +24,10 @@ func RenderBlock(blockType string, dataJSON string) (string, error) {
 		return renderVideoBlock(dataJSON)
 	case "spacer":
 		return renderSpacerBlock(dataJSON)
+	case "contact":
+		return renderContactBlock(dataJSON)
+	case "columns":
+		return renderColumnsBlock(dataJSON)
 	default:
 		return "", fmt.Errorf("unknown block type: %s", blockType)
 	}
@@ -235,4 +239,101 @@ func renderSpacerBlock(dataJSON string) (string, error) {
 	}
 
 	return fmt.Sprintf(`<div class="spacer-block" style="height: %dpx;"></div>`, data.Height), nil
+}
+
+// ContactBlockData represents the JSON structure for contact blocks
+type ContactBlockData struct {
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle"`
+}
+
+// renderContactBlock renders an embedded contact form
+func renderContactBlock(dataJSON string) (string, error) {
+	var data ContactBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse contact block data: %w", err)
+	}
+
+	if data.Title == "" {
+		data.Title = "Get in Touch"
+	}
+
+	// Escape HTML to prevent XSS
+	title := html.EscapeString(data.Title)
+	subtitle := html.EscapeString(data.Subtitle)
+
+	formHTML := fmt.Sprintf(`<div class="contact-form-block" style="margin: 40px 0;">
+	<h2>%s</h2>`, title)
+
+	if subtitle != "" {
+		formHTML += fmt.Sprintf(`
+	<p>%s</p>`, subtitle)
+	}
+
+	formHTML += `
+	<form method="POST" action="/contact" style="max-width: 500px;">
+		<div style="margin-bottom: 20px;">
+			<label for="contact-name" style="display: block; margin-bottom: 8px; font-weight: 500;">Name:</label>
+			<input type="text" id="contact-name" name="name" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+		</div>
+		<div style="margin-bottom: 20px;">
+			<label for="contact-email" style="display: block; margin-bottom: 8px; font-weight: 500;">Email:</label>
+			<input type="email" id="contact-email" name="email" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+		</div>
+		<div style="margin-bottom: 20px;">
+			<label for="contact-subject" style="display: block; margin-bottom: 8px; font-weight: 500;">Subject:</label>
+			<input type="text" id="contact-subject" name="subject" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box;">
+		</div>
+		<div style="margin-bottom: 20px;">
+			<label for="contact-message" style="display: block; margin-bottom: 8px; font-weight: 500;">Message:</label>
+			<textarea id="contact-message" name="message" required rows="6" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; font-family: inherit;"></textarea>
+		</div>
+		<button type="submit" style="background: var(--color-primary, #2563eb); color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;">Send Message</button>
+	</form>
+</div>`
+
+	return formHTML, nil
+}
+
+// ColumnsBlockData represents the JSON structure for column blocks
+type ColumnsBlockData struct {
+	ColumnCount int      `json:"column_count"` // 2, 3, or 4
+	Columns     []Column `json:"columns"`
+}
+
+type Column struct {
+	Content string `json:"content"` // HTML content for this column
+}
+
+// renderColumnsBlock renders a multi-column layout block
+func renderColumnsBlock(dataJSON string) (string, error) {
+	var data ColumnsBlockData
+	if err := json.Unmarshal([]byte(dataJSON), &data); err != nil {
+		return "", fmt.Errorf("failed to parse columns block data: %w", err)
+	}
+
+	// Validate column count
+	if data.ColumnCount < 2 || data.ColumnCount > 4 {
+		data.ColumnCount = 2
+	}
+
+	htmlStr := `<div class="columns-block" style="display: grid; grid-template-columns: repeat(` + fmt.Sprintf("%d", data.ColumnCount) + `, 1fr); gap: var(--spacing-lg, 24px); margin: var(--spacing-lg, 24px) 0;">`
+
+	// Render each column
+	for _, col := range data.Columns {
+		// Sanitize content (allow basic HTML tags)
+		safeContent := html.EscapeString(col.Content)
+		// Convert newlines to <br> for display
+		safeContent = strings.ReplaceAll(safeContent, "\n", "<br>")
+
+		htmlStr += fmt.Sprintf(`
+			<div class="column" style="min-width: 0;">
+				%s
+			</div>
+		`, safeContent)
+	}
+
+	htmlStr += `</div>`
+
+	return htmlStr, nil
 }
