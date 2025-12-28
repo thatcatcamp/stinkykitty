@@ -44,20 +44,27 @@ func UsersListHandler(c *gin.Context) {
 
 	if currentUser.IsGlobalAdmin {
 		// Global admins see all users with their sites
-		db.GetDB().Raw(`
+		if err := db.GetDB().Raw(`
 			SELECT u.id, u.email, u.created_at,
-				   GROUP_CONCAT(DISTINCT s.subdomain) as sites,
-				   COALESCE(su.role, 'owner') as role
+				   GROUP_CONCAT(DISTINCT s.subdomain SEPARATOR ' | ') as sites,
+				   CASE
+					   WHEN COUNT(DISTINCT CASE WHEN s.owner_id = u.id THEN s.id END) > 0 THEN 'owner'
+					   WHEN MAX(su.role) = 'admin' THEN 'admin'
+					   ELSE 'member'
+				   END as role
 			FROM users u
 			LEFT JOIN site_users su ON u.id = su.user_id
 			LEFT JOIN sites s ON su.site_id = s.id OR s.owner_id = u.id
 			WHERE u.deleted_at IS NULL
 			GROUP BY u.id
 			ORDER BY u.email
-		`).Scan(&users)
+		`).Scan(&users).Error; err != nil {
+			c.String(http.StatusInternalServerError, "Failed to load users")
+			return
+		}
 	} else {
 		// Site admins see only users on their sites
-		db.GetDB().Raw(`
+		if err := db.GetDB().Raw(`
 			SELECT DISTINCT u.id, u.email, u.created_at,
 				   s.subdomain as sites,
 				   su.role
@@ -66,7 +73,10 @@ func UsersListHandler(c *gin.Context) {
 			INNER JOIN sites s ON su.site_id = s.id
 			WHERE s.id = ? AND u.deleted_at IS NULL
 			ORDER BY u.email
-		`, site.ID).Scan(&users)
+		`, site.ID).Scan(&users).Error; err != nil {
+			c.String(http.StatusInternalServerError, "Failed to load users")
+			return
+		}
 	}
 
 	// Build user table HTML
@@ -145,10 +155,36 @@ func UsersListHandler(c *gin.Context) {
 func UserResetPasswordHandler(c *gin.Context) {
 	userID := c.Param("id")
 
+	// Get current user
+	currentUserVal, exists := c.Get("user")
+	if !exists {
+		c.Redirect(http.StatusFound, "/admin/login")
+		return
+	}
+	currentUser := currentUserVal.(*models.User)
+
 	var user models.User
 	if err := db.GetDB().First(&user, userID).Error; err != nil {
 		c.String(http.StatusNotFound, "User not found")
 		return
+	}
+
+	// Authorization check
+	if !currentUser.IsGlobalAdmin {
+		// Site admin must verify the target user is on their site
+		siteVal, exists := c.Get("site")
+		if !exists {
+			c.String(http.StatusInternalServerError, "Site not found")
+			return
+		}
+		site := siteVal.(*models.Site)
+
+		var siteUser models.SiteUser
+		err := db.GetDB().Where("site_id = ? AND user_id = ?", site.ID, user.ID).First(&siteUser).Error
+		if err != nil {
+			c.String(http.StatusForbidden, "Unauthorized")
+			return
+		}
 	}
 
 	// Generate reset token
@@ -178,6 +214,38 @@ func UserResetPasswordHandler(c *gin.Context) {
 // UserDeleteHandler soft-deletes a user
 func UserDeleteHandler(c *gin.Context) {
 	userID := c.Param("id")
+
+	// Get current user
+	currentUserVal, exists := c.Get("user")
+	if !exists {
+		c.Redirect(http.StatusFound, "/admin/login")
+		return
+	}
+	currentUser := currentUserVal.(*models.User)
+
+	var user models.User
+	if err := db.GetDB().First(&user, userID).Error; err != nil {
+		c.String(http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Authorization check
+	if !currentUser.IsGlobalAdmin {
+		// Site admin must verify the target user is on their site
+		siteVal, exists := c.Get("site")
+		if !exists {
+			c.String(http.StatusInternalServerError, "Site not found")
+			return
+		}
+		site := siteVal.(*models.Site)
+
+		var siteUser models.SiteUser
+		err := db.GetDB().Where("site_id = ? AND user_id = ?", site.ID, user.ID).First(&siteUser).Error
+		if err != nil {
+			c.String(http.StatusForbidden, "Unauthorized")
+			return
+		}
+	}
 
 	// Soft delete
 	if err := db.GetDB().Delete(&models.User{}, userID).Error; err != nil {
