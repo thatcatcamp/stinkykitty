@@ -3,10 +3,12 @@ package handlers
 import (
 	"fmt"
 	"html"
+	"html/template"
 	"log"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/blocks"
@@ -44,6 +46,22 @@ func renderNavigation(siteID uint) string {
 	nav.WriteString(`</nav>`)
 
 	return nav.String()
+}
+
+// getCopyrightText returns formatted copyright text with replacements
+func getCopyrightText(site *models.Site) string {
+	copyright := site.CopyrightText
+	if copyright == "" {
+		// Default copyright
+		copyright = "© {year} {site}. All rights reserved."
+	}
+
+	// Replace placeholders
+	currentYear := time.Now().Format("2006")
+	copyright = strings.ReplaceAll(copyright, "{year}", currentYear)
+	copyright = strings.ReplaceAll(copyright, "{site}", site.SiteTitle)
+
+	return html.EscapeString(copyright)
 }
 
 // ServeHomepage renders the site's homepage
@@ -163,11 +181,12 @@ func ServeHomepage(c *gin.Context) {
 	<h1>%s</h1>
 	%s
 	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
-		<a href="/admin/login">Admin Login</a>
+		<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
+		<p style="margin: 0.5em 0 0 0;"><a href="/admin/login">Admin Login</a></p>
 	</footer>
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String())
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String(), getCopyrightText(site))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -298,11 +317,12 @@ func ServePage(c *gin.Context) {
 	<h1>%s</h1>
 	%s
 	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
-		<a href="/">Home</a> | <a href="/admin/login">Admin Login</a>
+		<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
+		<p style="margin: 0.5em 0 0 0;"><a href="/">Home</a> | <a href="/admin/login">Admin Login</a></p>
 	</footer>
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String())
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String(), getCopyrightText(site))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -408,9 +428,12 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 			<strong>Thank you!</strong> Your message has been sent. We'll get back to you soon.
 		</div>
 		<p><a href="/">← Back to Home</a></p>
+		<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
+			<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
+		</footer>
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, navigation)
+</html>`, site.SiteTitle, themeCSSStr, navigation, getCopyrightText(site))
 
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(successHTML))
 		return
@@ -480,9 +503,12 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 			</div>
 		</form>
 		<p style="margin-top: 30px;"><a href="/">← Back to Home</a></p>
+		<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
+			<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
+		</footer>
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, navigation)
+</html>`, site.SiteTitle, themeCSSStr, navigation, getCopyrightText(site))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(formHTML))
 }
@@ -585,11 +611,23 @@ func getGoogleAnalyticsScript(site *models.Site) string {
 		return ""
 	}
 
-	// Sanitize the GA ID (basic validation)
+	// Sanitize and validate the GA ID
 	gaID := strings.TrimSpace(site.GoogleAnalyticsID)
 	if gaID == "" {
+		log.Printf("Site %d: Empty Google Analytics ID after trimming", site.ID)
 		return ""
 	}
+
+	// Validate GA ID format: G-XXXXXXXXXX (GA4) or UA-XXXXXXXXX-X (Universal)
+	// This prevents XSS attacks and ensures only valid GA IDs are used
+	validFormat := regexp.MustCompile(`^(G|UA)-[A-Z0-9\-]+$`)
+	if !validFormat.MatchString(gaID) {
+		log.Printf("Site %d: Invalid GA ID format: %s", site.ID, gaID)
+		return ""
+	}
+
+	// Escape for JavaScript context as defense-in-depth
+	escapedGAID := template.JSEscapeString(gaID)
 
 	return fmt.Sprintf(`
 <!-- Google Analytics -->
@@ -600,5 +638,5 @@ func getGoogleAnalyticsScript(site *models.Site) string {
   gtag('js', new Date());
   gtag('config', '%s');
 </script>
-`, gaID, gaID)
+`, escapedGAID, escapedGAID)
 }
