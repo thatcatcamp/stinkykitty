@@ -5,11 +5,14 @@ import (
 	"html"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/blocks"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/email"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"gorm.io/gorm"
 )
@@ -298,4 +301,276 @@ func ServePage(c *gin.Context) {
 `, page.Title, themeCSSStr, navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+// ContactFormHandler displays the contact form or processes submissions
+func ContactFormHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusInternalServerError, "Site not found")
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get theme CSS from context
+	themeCSSStr := ""
+	themeVal, exists := c.Get("theme_css")
+	if exists {
+		themeCSSStr = themeVal.(string)
+	}
+
+	// Get navigation
+	navigation := renderNavigation(site.ID)
+
+	// Handle POST requests (form submission)
+	if c.Request.Method == "POST" {
+		name := strings.TrimSpace(c.PostForm("name"))
+		senderEmail := strings.TrimSpace(c.PostForm("email"))
+		subject := strings.TrimSpace(c.PostForm("subject"))
+		message := strings.TrimSpace(c.PostForm("message"))
+
+		// Validate form fields
+		if name == "" || senderEmail == "" || subject == "" || message == "" {
+			c.String(http.StatusBadRequest, "All fields are required")
+			return
+		}
+
+		// Validate email format
+		emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+		if !emailRegex.MatchString(senderEmail) {
+			c.String(http.StatusBadRequest, "Invalid email format")
+			return
+		}
+
+		// Sanitize inputs
+		name = html.EscapeString(name)
+		senderEmail = html.EscapeString(senderEmail)
+		subject = html.EscapeString(subject)
+		message = html.EscapeString(message)
+
+		// Load site owner to get admin email
+		var owner models.User
+		if err := db.GetDB().First(&owner, site.OwnerID).Error; err != nil {
+			log.Printf("Error loading site owner: %v", err)
+			c.String(http.StatusInternalServerError, "Error processing contact form")
+			return
+		}
+
+		// Send email to site owner
+		svc, err := email.NewEmailService()
+		if err != nil {
+			log.Printf("Error creating email service: %v", err)
+			// Don't expose error to user, just log it
+		} else {
+			emailSubject := fmt.Sprintf("Contact Form Submission: %s", subject)
+			emailBody := fmt.Sprintf(`New contact form submission:
+
+From: %s (%s)
+Subject: %s
+
+Message:
+%s
+
+---
+Do not reply to this email. To respond, contact the sender at: %s`, name, senderEmail, subject, message, senderEmail)
+
+			if err := svc.SendEmail(owner.Email, emailSubject, emailBody); err != nil {
+				log.Printf("Error sending contact email: %v", err)
+				// Don't expose error to user
+			}
+		}
+
+		// Show success message
+		successHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Thank You - %s</title>
+	<style>
+		%s
+		body { font-family: system-ui; margin: 0; padding: 20px; }
+		.container { max-width: 800px; margin: 50px auto; }
+		.success-message { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+		a { color: var(--color-primary, #2563eb); text-decoration: none; }
+		a:hover { text-decoration: underline; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		%s
+		<div class="success-message">
+			<strong>Thank you!</strong> Your message has been sent. We'll get back to you soon.
+		</div>
+		<p><a href="/">← Back to Home</a></p>
+	</div>
+</body>
+</html>`, site.SiteTitle, themeCSSStr, navigation)
+
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(successHTML))
+		return
+	}
+
+	// Display the contact form (GET request)
+	formHTML := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Contact Us - %s</title>
+	<style>
+		%s
+		body { font-family: system-ui; margin: 0; padding: 20px; }
+		.container { max-width: 600px; margin: 0 auto; }
+		.form-group { margin-bottom: 20px; }
+		label { display: block; margin-bottom: 5px; font-weight: 500; }
+		input[type="text"],
+		input[type="email"],
+		textarea {
+			width: 100%%;
+			padding: 10px;
+			border: 1px solid var(--color-border, #ddd);
+			border-radius: 4px;
+			font-family: inherit;
+			font-size: 1em;
+			box-sizing: border-box;
+		}
+		input[type="text"]:focus,
+		input[type="email"]:focus,
+		textarea:focus {
+			outline: none;
+			border-color: var(--color-primary, #2563eb);
+			box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+		}
+		textarea { resize: vertical; min-height: 150px; }
+		button { background: var(--color-primary, #2563eb); color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
+		button:hover { opacity: 0.9; }
+		a { color: var(--color-primary, #2563eb); text-decoration: none; }
+		a:hover { text-decoration: underline; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		%s
+		<h1>Contact Us</h1>
+		<form method="POST" action="/contact">
+			<div class="form-group">
+				<label for="name">Name</label>
+				<input type="text" id="name" name="name" required>
+			</div>
+			<div class="form-group">
+				<label for="email">Email Address</label>
+				<input type="email" id="email" name="email" required>
+			</div>
+			<div class="form-group">
+				<label for="subject">Subject</label>
+				<input type="text" id="subject" name="subject" required>
+			</div>
+			<div class="form-group">
+				<label for="message">Message</label>
+				<textarea id="message" name="message" required></textarea>
+			</div>
+			<div class="form-group">
+				<button type="submit">Send Message</button>
+			</div>
+		</form>
+		<p style="margin-top: 30px;"><a href="/">← Back to Home</a></p>
+	</div>
+</body>
+</html>`, site.SiteTitle, themeCSSStr, navigation)
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(formHTML))
+}
+
+// RobotsTxtHandler serves robots.txt for the site
+func RobotsTxtHandler(c *gin.Context) {
+	site, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusNotFound, "Site not found")
+		return
+	}
+	s := site.(*models.Site)
+
+	// Get the domain for the sitemap URL
+	var domain string
+	if s.CustomDomain != nil && *s.CustomDomain != "" {
+		domain = *s.CustomDomain
+	} else {
+		baseDomain := config.GetString("server.base_domain")
+		if baseDomain == "" {
+			baseDomain = "localhost"
+		}
+		domain = s.Subdomain + "." + baseDomain
+	}
+
+	robotsTxt := fmt.Sprintf(`User-agent: *
+Allow: /
+
+Sitemap: https://%s/sitemap.xml
+`, domain)
+
+	c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(robotsTxt))
+}
+
+// SitemapXMLHandler generates sitemap.xml for the site
+func SitemapXMLHandler(c *gin.Context) {
+	site, exists := c.Get("site")
+	if !exists {
+		c.String(http.StatusNotFound, "Site not found")
+		return
+	}
+	s := site.(*models.Site)
+
+	// Get the domain
+	var domain string
+	if s.CustomDomain != nil && *s.CustomDomain != "" {
+		domain = *s.CustomDomain
+	} else {
+		baseDomain := config.GetString("server.base_domain")
+		if baseDomain == "" {
+			baseDomain = "localhost"
+		}
+		domain = s.Subdomain + "." + baseDomain
+	}
+
+	// Get all pages for this site
+	var pages []models.Page
+	db.GetDB().Where("site_id = ?", s.ID).Order("updated_at DESC").Find(&pages)
+
+	// Build sitemap XML
+	xml := `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+`
+
+	// Add each page to the sitemap
+	for _, page := range pages {
+		var url string
+		if page.Slug == "home" || page.Slug == "" {
+			url = fmt.Sprintf("https://%s/", domain)
+		} else {
+			url = fmt.Sprintf("https://%s/%s", domain, page.Slug)
+		}
+
+		// Format the last modified date in W3C format
+		lastmod := page.UpdatedAt.Format("2006-01-02T15:04:05-07:00")
+
+		// Set priority based on whether it's the homepage
+		priority := "0.8"
+		if page.Slug == "home" || page.Slug == "" {
+			priority = "1.0"
+		}
+
+		xml += fmt.Sprintf(`  <url>
+    <loc>%s</loc>
+    <lastmod>%s</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>%s</priority>
+  </url>
+`, url, lastmod, priority)
+	}
+
+	xml += `</urlset>`
+
+	c.Data(http.StatusOK, "application/xml; charset=utf-8", []byte(xml))
 }
