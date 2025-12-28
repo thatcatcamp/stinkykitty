@@ -270,3 +270,208 @@ func TestAdminSettingsSaveHandlerNoSite(t *testing.T) {
 		t.Errorf("Expected status 500, got %d", w.Code)
 	}
 }
+
+func TestAdminSettingsSaveHandlerWithSiteInfo(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	database := setupHandlerTestDB(t)
+	db.SetDB(database)
+
+	// Create site with initial values
+	site := models.Site{
+		ID:           1,
+		Subdomain:    "test",
+		ThemePalette: "slate",
+		DarkMode:     false,
+	}
+	database.Create(&site)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("site_title", "Test Camp")
+	form.Add("site_tagline", "Adventure Awaits")
+	form.Add("google_analytics_id", "G-TESTID123")
+	form.Add("copyright_text", "© 2025 Test Camp")
+	form.Add("palette", "indigo")
+	form.Add("dark_mode", "true")
+
+	c.Request = httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Set("site", &site)
+
+	AdminSettingsSaveHandler(c)
+
+	// Should redirect to settings page
+	if c.Writer.Status() != http.StatusFound {
+		t.Fatalf("Expected redirect (302), got %d", c.Writer.Status())
+	}
+
+	// Verify ALL fields were saved
+	var updatedSite models.Site
+	database.First(&updatedSite, site.ID)
+
+	if updatedSite.SiteTitle != "Test Camp" {
+		t.Errorf("Expected site title 'Test Camp', got %s", updatedSite.SiteTitle)
+	}
+	if updatedSite.SiteTagline != "Adventure Awaits" {
+		t.Errorf("Expected site tagline 'Adventure Awaits', got %s", updatedSite.SiteTagline)
+	}
+	if updatedSite.GoogleAnalyticsID != "G-TESTID123" {
+		t.Errorf("Expected GA ID 'G-TESTID123', got %s", updatedSite.GoogleAnalyticsID)
+	}
+	if updatedSite.CopyrightText != "© 2025 Test Camp" {
+		t.Errorf("Expected copyright '© 2025 Test Camp', got %s", updatedSite.CopyrightText)
+	}
+	if updatedSite.ThemePalette != "indigo" {
+		t.Errorf("Expected palette 'indigo', got %s", updatedSite.ThemePalette)
+	}
+	if !updatedSite.DarkMode {
+		t.Error("Expected dark mode to be enabled")
+	}
+}
+
+func TestAdminSettingsSaveHandlerInvalidGoogleAnalyticsID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	database := setupHandlerTestDB(t)
+	db.SetDB(database)
+
+	// Create site
+	site := models.Site{
+		ID:           1,
+		Subdomain:    "test",
+		ThemePalette: "slate",
+		DarkMode:     false,
+	}
+	database.Create(&site)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("site_title", "Test Camp")
+	form.Add("google_analytics_id", "INVALID-ID")
+	form.Add("palette", "indigo")
+
+	c.Request = httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Set("site", &site)
+
+	AdminSettingsSaveHandler(c)
+
+	// Should return bad request
+	if c.Writer.Status() != http.StatusBadRequest {
+		t.Errorf("Expected status 400, got %d", c.Writer.Status())
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Invalid Google Analytics tracking ID format") {
+		t.Errorf("Expected error message about invalid format, got: %s", body)
+	}
+}
+
+func TestAdminSettingsSaveHandlerValidGoogleAnalyticsIDs(t *testing.T) {
+	testCases := []struct {
+		name string
+		gaID string
+	}{
+		{"GA4 Format", "G-ABC123XYZ"},
+		{"Universal Analytics Format", "UA-12345-1"},
+		{"Empty (allowed)", ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			database := setupHandlerTestDB(t)
+			db.SetDB(database)
+
+			site := models.Site{
+				ID:           1,
+				Subdomain:    "test",
+				ThemePalette: "slate",
+				DarkMode:     false,
+			}
+			database.Create(&site)
+
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			form := url.Values{}
+			form.Add("site_title", "Test Camp")
+			form.Add("google_analytics_id", tc.gaID)
+			form.Add("palette", "indigo")
+
+			c.Request = httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
+			c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			c.Set("site", &site)
+
+			AdminSettingsSaveHandler(c)
+
+			// Should redirect (success)
+			if c.Writer.Status() != http.StatusFound {
+				t.Errorf("Expected status 302, got %d", c.Writer.Status())
+			}
+
+			// Verify GA ID was saved
+			var updatedSite models.Site
+			database.First(&updatedSite, site.ID)
+
+			if updatedSite.GoogleAnalyticsID != tc.gaID {
+				t.Errorf("Expected GA ID '%s', got '%s'", tc.gaID, updatedSite.GoogleAnalyticsID)
+			}
+		})
+	}
+}
+
+func TestAdminSettingsSaveHandlerTrimsWhitespace(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	database := setupHandlerTestDB(t)
+	db.SetDB(database)
+
+	site := models.Site{
+		ID:           1,
+		Subdomain:    "test",
+		ThemePalette: "slate",
+		DarkMode:     false,
+	}
+	database.Create(&site)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	form := url.Values{}
+	form.Add("site_title", "  Test Camp  ")
+	form.Add("site_tagline", "  Adventure Awaits  ")
+	form.Add("google_analytics_id", "  G-TEST123  ")
+	form.Add("copyright_text", "  © 2025  ")
+	form.Add("palette", "indigo")
+
+	c.Request = httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
+	c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	c.Set("site", &site)
+
+	AdminSettingsSaveHandler(c)
+
+	// Should redirect (success)
+	if c.Writer.Status() != http.StatusFound {
+		t.Fatalf("Expected redirect (302), got %d", c.Writer.Status())
+	}
+
+	// Verify whitespace was trimmed
+	var updatedSite models.Site
+	database.First(&updatedSite, site.ID)
+
+	if updatedSite.SiteTitle != "Test Camp" {
+		t.Errorf("Expected trimmed site title 'Test Camp', got '%s'", updatedSite.SiteTitle)
+	}
+	if updatedSite.SiteTagline != "Adventure Awaits" {
+		t.Errorf("Expected trimmed site tagline 'Adventure Awaits', got '%s'", updatedSite.SiteTagline)
+	}
+	if updatedSite.GoogleAnalyticsID != "G-TEST123" {
+		t.Errorf("Expected trimmed GA ID 'G-TEST123', got '%s'", updatedSite.GoogleAnalyticsID)
+	}
+	if updatedSite.CopyrightText != "© 2025" {
+		t.Errorf("Expected trimmed copyright '© 2025', got '%s'", updatedSite.CopyrightText)
+	}
+}

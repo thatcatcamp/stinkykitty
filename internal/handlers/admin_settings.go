@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"html"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
@@ -262,7 +265,7 @@ func AdminSettingsHandler(c *gin.Context) {
 
                     <div class="form-group">
                         <label for="site_title">Site Title</label>
-                        <input type="text" id="site_title" name="site_title" value="` + site.SiteTitle + `" placeholder="My Camp Name">
+                        <input type="text" id="site_title" name="site_title" value="` + html.EscapeString(site.SiteTitle) + `" placeholder="My Camp Name">
                         <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
                             The main title of your website
                         </small>
@@ -270,7 +273,7 @@ func AdminSettingsHandler(c *gin.Context) {
 
                     <div class="form-group">
                         <label for="site_tagline">Site Tagline</label>
-                        <input type="text" id="site_tagline" name="site_tagline" value="` + site.SiteTagline + `" placeholder="Where adventure begins">
+                        <input type="text" id="site_tagline" name="site_tagline" value="` + html.EscapeString(site.SiteTagline) + `" placeholder="Where adventure begins">
                         <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
                             A brief description or slogan for your site
                         </small>
@@ -278,7 +281,7 @@ func AdminSettingsHandler(c *gin.Context) {
 
                     <div class="form-group">
                         <label for="google_analytics_id">Google Analytics Tracking ID</label>
-                        <input type="text" id="google_analytics_id" name="google_analytics_id" value="` + site.GoogleAnalyticsID + `" placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX">
+                        <input type="text" id="google_analytics_id" name="google_analytics_id" value="` + html.EscapeString(site.GoogleAnalyticsID) + `" placeholder="G-XXXXXXXXXX or UA-XXXXXXXXX">
                         <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
                             Enter your Google Analytics tracking ID to enable analytics tracking
                         </small>
@@ -286,7 +289,7 @@ func AdminSettingsHandler(c *gin.Context) {
 
                     <div class="form-group">
                         <label for="copyright_text">Copyright Text</label>
-                        <input type="text" id="copyright_text" name="copyright_text" value="` + site.CopyrightText + `" placeholder="© 2025 Your Camp Name. All rights reserved.">
+                        <input type="text" id="copyright_text" name="copyright_text" value="` + html.EscapeString(site.CopyrightText) + `" placeholder="© 2025 Your Camp Name. All rights reserved.">
                         <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
                             Custom copyright text for your site footer. Use {year} for current year, {site} for site name.
                         </small>
@@ -336,11 +339,21 @@ func AdminSettingsSaveHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
-	// Get site information form values
-	siteTitle := c.PostForm("site_title")
-	siteTagline := c.PostForm("site_tagline")
-	googleAnalyticsID := c.PostForm("google_analytics_id")
-	copyrightText := c.PostForm("copyright_text")
+	// Get site information form values and trim whitespace
+	siteTitle := strings.TrimSpace(c.PostForm("site_title"))
+	siteTagline := strings.TrimSpace(c.PostForm("site_tagline"))
+	googleAnalyticsID := strings.TrimSpace(c.PostForm("google_analytics_id"))
+	copyrightText := strings.TrimSpace(c.PostForm("copyright_text"))
+
+	// Validate GA ID format if provided
+	if googleAnalyticsID != "" {
+		// GA4: G-XXXXXXXXXX or Universal Analytics: UA-XXXXXXXXX-X
+		matched, _ := regexp.MatchString(`^(G-[A-Z0-9]+|UA-[0-9]+-[0-9]+)$`, googleAnalyticsID)
+		if !matched {
+			c.String(http.StatusBadRequest, "Invalid Google Analytics tracking ID format. Expected G-XXXXXXXXXX or UA-XXXXXXXXX-X")
+			return
+		}
+	}
 
 	// Get theme form values
 	palette := c.PostForm("palette")
