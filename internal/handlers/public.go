@@ -81,6 +81,7 @@ func ServeHomepage(c *gin.Context) {
 		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
 		.placeholder { text-align: center; }
 	</style>
+	%s
 </head>
 <body>
 	<div class="placeholder">
@@ -90,7 +91,7 @@ func ServeHomepage(c *gin.Context) {
 	</div>
 </body>
 </html>
-`, site.Subdomain, themeCSSStr, site.Subdomain)))
+`, site.Subdomain, themeCSSStr, getGoogleAnalyticsScript(site), site.Subdomain)))
 		return
 	}
 
@@ -149,6 +150,7 @@ func ServeHomepage(c *gin.Context) {
 			.search-bar button { width: 100%%; }
 		}
 	</style>
+	%s
 </head>
 <body>
 	%s
@@ -165,7 +167,7 @@ func ServeHomepage(c *gin.Context) {
 	</footer>
 </body>
 </html>
-`, page.Title, themeCSSStr, navigation, page.Title, content.String())
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -212,6 +214,7 @@ func ServePage(c *gin.Context) {
 		.links { margin-top: 30px; }
 		.links a { margin: 0 10px; }
 	</style>
+	%s
 </head>
 <body>
 	<h1>404</h1>
@@ -222,7 +225,7 @@ func ServePage(c *gin.Context) {
 		<a href="/admin/login">Admin Login</a>
 	</div>
 </body>
-</html>`, site.Subdomain, themeCSSStr)
+</html>`, site.Subdomain, themeCSSStr, getGoogleAnalyticsScript(site))
 		c.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(html))
 		return
 	}
@@ -282,6 +285,7 @@ func ServePage(c *gin.Context) {
 			.search-bar button { width: 100%%; }
 		}
 	</style>
+	%s
 </head>
 <body>
 	%s
@@ -298,7 +302,7 @@ func ServePage(c *gin.Context) {
 	</footer>
 </body>
 </html>
-`, page.Title, themeCSSStr, navigation, page.Title, content.String())
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String())
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -573,4 +577,28 @@ func SitemapXMLHandler(c *gin.Context) {
 	xml += `</urlset>`
 
 	c.Data(http.StatusOK, "application/xml; charset=utf-8", []byte(xml))
+}
+
+// getGoogleAnalyticsScript returns GA tracking script if configured
+func getGoogleAnalyticsScript(site *models.Site) string {
+	if site.GoogleAnalyticsID == "" {
+		return ""
+	}
+
+	// Sanitize the GA ID (basic validation)
+	gaID := strings.TrimSpace(site.GoogleAnalyticsID)
+	if gaID == "" {
+		return ""
+	}
+
+	return fmt.Sprintf(`
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=%s"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '%s');
+</script>
+`, gaID, gaID)
 }
