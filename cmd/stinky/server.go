@@ -126,6 +126,14 @@ var serverStartCmd = &cobra.Command{
 			// Search endpoint
 			siteGroup.GET("/search", handlers.SearchHandler)
 
+			// Contact form
+			siteGroup.GET("/contact", handlers.ContactFormHandler)
+			siteGroup.POST("/contact", handlers.ContactFormHandler)
+
+			// SEO files
+			siteGroup.GET("/robots.txt", handlers.RobotsTxtHandler)
+			siteGroup.GET("/sitemap.xml", handlers.SitemapXMLHandler)
+
 			// Static file serving for uploads (site-specific)
 			siteGroup.GET("/uploads/*filepath", handlers.ServeUploadedFile)
 
@@ -180,12 +188,17 @@ var serverStartCmd = &cobra.Command{
 					adminGroup.GET("/settings", handlers.AdminSettingsHandler)
 					adminGroup.POST("/settings", handlers.AdminSettingsSaveHandler)
 					adminGroup.GET("/export", handlers.ExportSiteHandler(db.GetDB()))
+					adminGroup.GET("/docs", handlers.DocsHandler)
 					// Delete site (owner/admin only)
 					adminGroup.DELETE("/sites/:id/delete", handlers.DeleteSiteHandler)
 					// Create camp form
 					adminGroup.GET("/create-camp", handlers.CreateCampFormHandler)
 					adminGroup.POST("/create-camp", handlers.CreateCampFormHandler) // Handle POST for step 3
 					adminGroup.POST("/create-camp-submit", handlers.CreateCampSubmitHandler)
+					// User management
+					adminGroup.GET("/users", handlers.UsersListHandler)
+					adminGroup.POST("/users/:id/reset-password", handlers.UserResetPasswordHandler)
+					adminGroup.POST("/users/:id/delete", handlers.UserDeleteHandler)
 					// API endpoints
 					adminGroup.GET("/api/subdomain-check", handlers.SubdomainCheckHandler)
 				}
