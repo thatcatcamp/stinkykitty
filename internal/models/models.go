@@ -43,10 +43,12 @@ type Site struct {
 	SiteTitle      string
 	SiteTagline    string
 	LogoPath       string
-	FontPair       string `gorm:"default:system"`
-	ThemePalette   string `gorm:"default:slate"` // Theme color palette name
-	DarkMode       bool   `gorm:"default:false"` // Enable dark mode
-	AllowedIPs     string `gorm:"type:text"`     // JSON array of CIDR ranges
+	FontPair          string `gorm:"default:system"`
+	ThemePalette      string `gorm:"default:slate"` // Theme color palette name
+	DarkMode          bool   `gorm:"default:false"` // Enable dark mode
+	AllowedIPs        string `gorm:"type:text"`     // JSON array of CIDR ranges
+	GoogleAnalyticsID string // GA tracking ID (G-XXXXXXXXXX or UA-XXXXXXXXX)
+	CopyrightText     string // Custom footer copyright text
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
