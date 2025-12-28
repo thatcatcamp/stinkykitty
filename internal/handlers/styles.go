@@ -95,5 +95,64 @@ input:focus, textarea:focus {
 }
 
 input::placeholder { color: var(--color-text-secondary); }
+
+/* Site Header */
+.site-header {
+	background: var(--color-bg-card);
+	border-bottom: 1px solid var(--color-border);
+	padding: 0;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.site-header-content {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: var(--spacing-md) var(--spacing-lg);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.site-header-logo {
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--color-text-primary);
+	text-decoration: none;
+}
+
+.site-header-nav {
+	display: flex;
+	gap: var(--spacing-lg);
+	align-items: center;
+}
+
+.site-header-nav a {
+	color: var(--color-text-secondary);
+	text-decoration: none;
+	font-weight: 500;
+	transition: color 0.2s;
+}
+
+.site-header-nav a:hover {
+	color: var(--color-accent);
+}
+
+.site-header-login {
+	background: var(--color-accent);
+	color: white;
+	padding: 8px 16px;
+	border-radius: var(--radius-sm);
+	text-decoration: none;
+	font-weight: 600;
+	transition: opacity 0.2s;
+}
+
+.site-header-login:hover {
+	opacity: 0.9;
+	color: white;
+}
 `
 }

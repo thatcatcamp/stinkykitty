@@ -19,6 +19,30 @@ import (
 	"gorm.io/gorm"
 )
 
+// renderNavigationLinks generates just the navigation links (for header)
+func renderNavigationLinks(siteID uint) string {
+	var menuItems []models.MenuItem
+	db.GetDB().Where("site_id = ?", siteID).
+		Order("`order` ASC").
+		Find(&menuItems)
+
+	if len(menuItems) == 0 {
+		return ""
+	}
+
+	var nav strings.Builder
+	for _, item := range menuItems {
+		nav.WriteString(fmt.Sprintf(
+			`<a href="%s">%s</a>`,
+			html.EscapeString(item.URL),
+			html.EscapeString(item.Label),
+		))
+		nav.WriteString("\n\t\t\t")
+	}
+
+	return nav.String()
+}
+
 // renderNavigation generates the navigation menu HTML for a site
 func renderNavigation(siteID uint) string {
 	var menuItems []models.MenuItem
@@ -56,12 +80,31 @@ func getCopyrightText(site *models.Site) string {
 		copyright = "© {year} {site}. All rights reserved."
 	}
 
-	// Replace placeholders
-	currentYear := time.Now().Format("2006")
-	copyright = strings.ReplaceAll(copyright, "{year}", currentYear)
-	copyright = strings.ReplaceAll(copyright, "{site}", site.SiteTitle)
+	// Escape the template first
+	copyright = html.EscapeString(copyright)
 
-	return html.EscapeString(copyright)
+	// Replace placeholders with escaped values
+	currentYear := time.Now().Format("2006")
+	escapedSiteTitle := html.EscapeString(site.SiteTitle)
+
+	copyright = strings.ReplaceAll(copyright, "{year}", currentYear)
+	copyright = strings.ReplaceAll(copyright, "{site}", escapedSiteTitle)
+
+	return copyright
+}
+
+// renderFooter generates footer HTML for pages
+func renderFooter(site *models.Site, includeHomeLink bool) string {
+	links := ""
+	if includeHomeLink {
+		links = `<p style="margin: 0.5em 0 0 0;"><a href="/">Home</a></p>`
+	}
+
+	return fmt.Sprintf(`
+<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
+	<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
+	%s
+</footer>`, getCopyrightText(site), links)
 }
 
 // ServeHomepage renders the site's homepage
@@ -113,8 +156,11 @@ func ServeHomepage(c *gin.Context) {
 		return
 	}
 
-	// Render navigation
+	// Render navigation for old style nav (still used for search bar area)
 	navigation := renderNavigation(site.ID)
+
+	// Render navigation links for header
+	navigationLinks := renderNavigationLinks(site.ID)
 
 	// Render all blocks
 	var content strings.Builder
@@ -171,6 +217,15 @@ func ServeHomepage(c *gin.Context) {
 	%s
 </head>
 <body>
+	<header class="site-header">
+		<div class="site-header-content">
+			<a href="/" class="site-header-logo">%s</a>
+			<nav class="site-header-nav">
+				%s
+				<a href="/admin/login" class="site-header-login">Login</a>
+			</nav>
+		</div>
+	</header>
 	%s
 	<div class="search-bar">
 		<form action="/search" method="GET">
@@ -180,13 +235,10 @@ func ServeHomepage(c *gin.Context) {
 	</div>
 	<h1>%s</h1>
 	%s
-	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
-		<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
-		<p style="margin: 0.5em 0 0 0;"><a href="/admin/login">Admin Login</a></p>
-	</footer>
+	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String(), getCopyrightText(site))
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), html.EscapeString(site.SiteTitle), navigationLinks, navigation, page.Title, content.String(), renderFooter(site, false))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -249,8 +301,11 @@ func ServePage(c *gin.Context) {
 		return
 	}
 
-	// Render navigation
+	// Render navigation for old style nav (still used for search bar area)
 	navigation := renderNavigation(site.ID)
+
+	// Render navigation links for header
+	navigationLinks := renderNavigationLinks(site.ID)
 
 	// Render all blocks
 	var content strings.Builder
@@ -307,6 +362,15 @@ func ServePage(c *gin.Context) {
 	%s
 </head>
 <body>
+	<header class="site-header">
+		<div class="site-header-content">
+			<a href="/" class="site-header-logo">%s</a>
+			<nav class="site-header-nav">
+				%s
+				<a href="/admin/login" class="site-header-login">Login</a>
+			</nav>
+		</div>
+	</header>
 	%s
 	<div class="search-bar">
 		<form action="/search" method="GET">
@@ -316,13 +380,10 @@ func ServePage(c *gin.Context) {
 	</div>
 	<h1>%s</h1>
 	%s
-	<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
-		<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
-		<p style="margin: 0.5em 0 0 0;"><a href="/">Home</a> | <a href="/admin/login">Admin Login</a></p>
-	</footer>
+	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), navigation, page.Title, content.String(), getCopyrightText(site))
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), html.EscapeString(site.SiteTitle), navigationLinks, navigation, page.Title, content.String(), renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -344,8 +405,11 @@ func ContactFormHandler(c *gin.Context) {
 		themeCSSStr = themeVal.(string)
 	}
 
-	// Get navigation
+	// Get navigation for old style nav
 	navigation := renderNavigation(site.ID)
+
+	// Get navigation links for header
+	navigationLinks := renderNavigationLinks(site.ID)
 
 	// Handle POST requests (form submission)
 	if c.Request.Method == "POST" {
@@ -422,18 +486,25 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 	</style>
 </head>
 <body>
+	<header class="site-header">
+		<div class="site-header-content">
+			<a href="/" class="site-header-logo">%s</a>
+			<nav class="site-header-nav">
+				%s
+				<a href="/admin/login" class="site-header-login">Login</a>
+			</nav>
+		</div>
+	</header>
 	<div class="container">
 		%s
 		<div class="success-message">
 			<strong>Thank you!</strong> Your message has been sent. We'll get back to you soon.
 		</div>
 		<p><a href="/">← Back to Home</a></p>
-		<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
-			<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
-		</footer>
+		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, navigation, getCopyrightText(site))
+</html>`, site.SiteTitle, themeCSSStr, html.EscapeString(site.SiteTitle), navigationLinks, navigation, renderFooter(site, true))
 
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(successHTML))
 		return
@@ -478,6 +549,15 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 	</style>
 </head>
 <body>
+	<header class="site-header">
+		<div class="site-header-content">
+			<a href="/" class="site-header-logo">%s</a>
+			<nav class="site-header-nav">
+				%s
+				<a href="/admin/login" class="site-header-login">Login</a>
+			</nav>
+		</div>
+	</header>
 	<div class="container">
 		%s
 		<h1>Contact Us</h1>
@@ -503,12 +583,10 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 			</div>
 		</form>
 		<p style="margin-top: 30px;"><a href="/">← Back to Home</a></p>
-		<footer style="margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--color-border); font-size: 0.9em;">
-			<p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">%s</p>
-		</footer>
+		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, navigation, getCopyrightText(site))
+</html>`, site.SiteTitle, themeCSSStr, html.EscapeString(site.SiteTitle), navigationLinks, navigation, renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(formHTML))
 }
