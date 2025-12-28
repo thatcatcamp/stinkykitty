@@ -257,8 +257,8 @@ func AdminSettingsHandler(c *gin.Context) {
         <div class="container">
             <form method="POST" action="/admin/settings">
                 <div class="card">
-                    <h2 class="card-title">Site Information</h2>
-                    <p class="card-description">Configure your site's basic information and metadata</p>
+                    <h2 class="card-title">Site Settings</h2>
+                    <p class="card-description">Configure your site's information and theme</p>
 
                     <div class="form-group">
                         <label for="site_title">Site Title</label>
@@ -291,11 +291,6 @@ func AdminSettingsHandler(c *gin.Context) {
                             Custom copyright text for your site footer. Use {year} for current year, {site} for site name.
                         </small>
                     </div>
-                </div>
-
-                <div class="card">
-                    <h2 class="card-title">Theme Settings</h2>
-                    <p class="card-description">Choose a color palette for your site</p>
 
                     <div class="form-group">
                         <label for="palette">Color Palette</label>
