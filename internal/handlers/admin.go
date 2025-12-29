@@ -9,6 +9,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/auth"
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
@@ -213,6 +214,7 @@ func LoginFormHandler(c *gin.Context) {
             <div id="error-message" style="display:none; color: var(--color-danger); margin-bottom: var(--spacing-md); text-align: center;"></div>
 
             <form method="POST" action="/admin/login">
+                ` + middleware.GetCSRFTokenHTML(c) + `
                 <div class="form-group">
                     <label for="email">Email</label>
                     <input type="email" id="email" name="email" placeholder="admin@example.com" autocomplete="email" required>
@@ -565,6 +567,7 @@ func DashboardHandler(c *gin.Context) {
                 <div class="header-right">
                     <small>` + user.Email + `</small>
                     <form method="POST" action="/admin/logout" style="display:inline;">
+                        ` + middleware.GetCSRFTokenHTML(c) + `
                         <button type="submit" class="logout-btn">Sign Out</button>
                     </form>
                 </div>
