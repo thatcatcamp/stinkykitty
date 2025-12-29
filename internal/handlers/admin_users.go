@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +47,7 @@ func UsersListHandler(c *gin.Context) {
 		// Global admins see all users with their sites
 		if err := db.GetDB().Raw(`
 			SELECT u.id, u.email, u.created_at,
-				   GROUP_CONCAT(DISTINCT s.subdomain, ' | ') as sites,
+				   GROUP_CONCAT(DISTINCT s.subdomain) as sites,
 				   CASE
 					   WHEN COUNT(DISTINCT CASE WHEN s.owner_id = u.id THEN s.id END) > 0 THEN 'owner'
 					   WHEN MAX(su.role) = 'admin' THEN 'admin'
@@ -82,6 +83,9 @@ func UsersListHandler(c *gin.Context) {
 	// Build user table HTML
 	var tableRows string
 	for _, user := range users {
+		// Replace comma separator with ' | ' for display
+		displaySites := strings.ReplaceAll(user.Sites, ",", " | ")
+
 		tableRows += fmt.Sprintf(`
 			<tr>
 				<td>%s</td>
@@ -99,7 +103,7 @@ func UsersListHandler(c *gin.Context) {
 					</div>
 				</td>
 			</tr>
-		`, html.EscapeString(user.Email), html.EscapeString(user.Sites), html.EscapeString(user.Role), user.CreatedAt.Format("2006-01-02"), user.ID, user.ID)
+		`, html.EscapeString(user.Email), html.EscapeString(displaySites), html.EscapeString(user.Role), user.CreatedAt.Format("2006-01-02"), user.ID, user.ID)
 	}
 
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
