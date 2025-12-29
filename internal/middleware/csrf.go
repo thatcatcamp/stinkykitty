@@ -3,6 +3,7 @@ package middleware
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"html"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -82,4 +83,24 @@ func GetCSRFToken(c *gin.Context) string {
 		return ""
 	}
 	return token.(string)
+}
+
+// GetCSRFTokenHTML returns an HTML hidden input field containing the CSRF token
+// for the current request. This is a convenience function for embedding CSRF
+// protection in HTML forms.
+//
+// Returns an empty string if no CSRF token is available in the context, which
+// indicates the CSRF middleware was not applied to this route.
+//
+// Example usage:
+//
+//	formHTML := `<form method="POST">` + middleware.GetCSRFTokenHTML(c) + `...`
+//
+// The output is safe for direct inclusion in HTML as the token value is escaped.
+func GetCSRFTokenHTML(c *gin.Context) string {
+	token := GetCSRFToken(c)
+	if token == "" {
+		return ""
+	}
+	return `<input type="hidden" name="` + csrfFormField + `" value="` + html.EscapeString(token) + `">`
 }
