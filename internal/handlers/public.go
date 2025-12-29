@@ -170,9 +170,6 @@ func ServeHomepage(c *gin.Context) {
 		return
 	}
 
-	// Render navigation for old style nav (still used for search bar area)
-	navigation := renderNavigation(site.ID)
-
 	// Render navigation links for header
 	navigationLinks := renderNavigationLinks(site.ID)
 
@@ -206,13 +203,6 @@ func ServeHomepage(c *gin.Context) {
 		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 0 20px 20px; line-height: 1.6; }
 		.text-block { margin-bottom: 1.5em; }
 
-		/* Navigation styles */
-		.site-nav { border-bottom: 2px solid var(--color-border); margin: 0 -20px 30px; padding: 0 20px; }
-		.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
-		.site-nav li { margin: 0; }
-		.site-nav a { display: block; padding: 15px 20px; text-decoration: none; transition: background-color 0.2s; }
-		.site-nav a:hover { opacity: 0.8; }
-
 		/* Search bar styles */
 		.search-bar { margin: 30px 0; }
 		.search-bar form { display: flex; gap: 10px; }
@@ -222,8 +212,6 @@ func ServeHomepage(c *gin.Context) {
 
 		/* Mobile responsive */
 		@media (max-width: 600px) {
-			.site-nav ul { flex-direction: column; }
-			.site-nav a { padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
 			.search-bar form { flex-direction: column; }
 			.search-bar button { width: 100%%; }
 		}
@@ -231,7 +219,6 @@ func ServeHomepage(c *gin.Context) {
 	%s
 </head>
 <body>
-	%s
 	%s
 	<div class="search-bar">
 		<form action="/search" method="GET">
@@ -244,7 +231,7 @@ func ServeHomepage(c *gin.Context) {
 	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), navigation, page.Title, content.String(), renderFooter(site, false))
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), page.Title, content.String(), renderFooter(site, false))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -307,9 +294,6 @@ func ServePage(c *gin.Context) {
 		return
 	}
 
-	// Render navigation for old style nav (still used for search bar area)
-	navigation := renderNavigation(site.ID)
-
 	// Render navigation links for header
 	navigationLinks := renderNavigationLinks(site.ID)
 
@@ -343,13 +327,6 @@ func ServePage(c *gin.Context) {
 		body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 0 20px 20px; line-height: 1.6; }
 		.text-block { margin-bottom: 1.5em; }
 
-		/* Navigation styles */
-		.site-nav { border-bottom: 2px solid var(--color-border); margin: 0 -20px 30px; padding: 0 20px; }
-		.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; }
-		.site-nav li { margin: 0; }
-		.site-nav a { display: block; padding: 15px 20px; text-decoration: none; transition: background-color 0.2s; }
-		.site-nav a:hover { opacity: 0.8; }
-
 		/* Search bar styles */
 		.search-bar { margin: 30px 0; }
 		.search-bar form { display: flex; gap: 10px; }
@@ -359,8 +336,6 @@ func ServePage(c *gin.Context) {
 
 		/* Mobile responsive */
 		@media (max-width: 600px) {
-			.site-nav ul { flex-direction: column; }
-			.site-nav a { padding: 12px 15px; border-bottom: 1px solid var(--color-border); }
 			.search-bar form { flex-direction: column; }
 			.search-bar button { width: 100%%; }
 		}
@@ -368,7 +343,6 @@ func ServePage(c *gin.Context) {
 	%s
 </head>
 <body>
-	%s
 	%s
 	<div class="search-bar">
 		<form action="/search" method="GET">
@@ -381,7 +355,7 @@ func ServePage(c *gin.Context) {
 	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), navigation, page.Title, content.String(), renderFooter(site, true))
+`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), page.Title, content.String(), renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -402,9 +376,6 @@ func ContactFormHandler(c *gin.Context) {
 	if exists {
 		themeCSSStr = themeVal.(string)
 	}
-
-	// Get navigation for old style nav
-	navigation := renderNavigation(site.ID)
 
 	// Get navigation links for header
 	navigationLinks := renderNavigationLinks(site.ID)
@@ -486,7 +457,6 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 <body>
 	%s
 	<div class="container">
-		%s
 		<div class="success-message">
 			<strong>Thank you!</strong> Your message has been sent. We'll get back to you soon.
 		</div>
@@ -494,7 +464,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), navigation, renderFooter(site, true))
+</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), renderFooter(site, true))
 
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(successHTML))
 		return
@@ -541,7 +511,6 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 <body>
 	%s
 	<div class="container">
-		%s
 		<h1>Contact Us</h1>
 		<form method="POST" action="/contact">
 			<div class="form-group">
@@ -568,7 +537,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), navigation, renderFooter(site, true))
+</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(formHTML))
 }

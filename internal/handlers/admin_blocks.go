@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	htmlpkg "html"
 	"net/http"
 	"strconv"
 
@@ -767,15 +768,33 @@ func EditBlockHandler(c *gin.Context) {
 			}, 2)
 		}
 
+		// Ensure we have columns matching the column count
+		if len(columnsData.Columns) == 0 {
+			if columnsData.ColumnCount < 2 || columnsData.ColumnCount > 4 {
+				columnsData.ColumnCount = 2
+			}
+			columnsData.Columns = make([]struct {
+				Content string `json:"content"`
+			}, columnsData.ColumnCount)
+		}
+
 		// Build column inputs HTML
 		var columnInputsHTML string
 		for i, col := range columnsData.Columns {
 			columnInputsHTML += fmt.Sprintf(`
 				<div class="column-input">
 					<label for="column_%d">Column %d:</label>
-					<textarea id="column_%d" name="column_%d" rows="6">%s</textarea>
+					<div class="toolbar">
+						<button type="button" class="toolbar-btn" onclick="insertImage(%d)" title="Insert Image">🖼️ Image</button>
+						<button type="button" class="toolbar-btn" onclick="insertButton(%d)" title="Insert Button">🔘 Button</button>
+						<button type="button" class="toolbar-btn" onclick="insertLink(%d)" title="Insert Link">🔗 Link</button>
+						<button type="button" class="toolbar-btn" onclick="insertHeading(%d)" title="Insert Heading">📝 Heading</button>
+						<button type="button" class="toolbar-btn" onclick="makeText(%d, 'bold')" title="Bold Text"><b>B</b></button>
+						<button type="button" class="toolbar-btn" onclick="makeText(%d, 'italic')" title="Italic Text"><i>I</i></button>
+					</div>
+					<textarea id="column_%d" name="column_%d" rows="8">%s</textarea>
 				</div>
-			`, i, i+1, i, i, col.Content)
+			`, i, i+1, i, i, i, i, i, i, i, i, htmlpkg.EscapeString(col.Content))
 		}
 
 		html = fmt.Sprintf(`<!DOCTYPE html>
@@ -802,8 +821,85 @@ func EditBlockHandler(c *gin.Context) {
         .columns-container { display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px; }
         .column-input { background: #f8f9fa; padding: 15px; border-radius: 4px; }
         .note { background: #f0f4f8; padding: 15px; border-radius: 4px; margin-bottom: 20px; color: #555; }
+        .toolbar { display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
+        .toolbar-btn { padding: 6px 12px; background: #e5e7eb; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .toolbar-btn:hover { background: #d1d5db; }
+        .toolbar-btn:active { transform: scale(0.95); }
     </style>
     <script>
+        function insertAtCursor(textareaId, text) {
+            const textarea = document.getElementById('column_' + textareaId);
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const currentText = textarea.value;
+            textarea.value = currentText.substring(0, start) + text + currentText.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        }
+
+        function insertImage(colIndex) {
+            const url = prompt('Enter image URL (e.g., /uploads/image.jpg):');
+            if (url) {
+                const html = '<img src="' + url + '" style="width: 100%; height: auto;">\n';
+                insertAtCursor(colIndex, html);
+            }
+        }
+
+        function insertButton(colIndex) {
+            const text = prompt('Enter button text:');
+            if (text) {
+                const link = prompt('Enter button link (optional, press OK to skip):');
+                let html;
+                if (link) {
+                    html = '<a href="' + link + '" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none;">' + text + '</a>\n';
+                } else {
+                    html = '<button style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">' + text + '</button>\n';
+                }
+                insertAtCursor(colIndex, html);
+            }
+        }
+
+        function insertLink(colIndex) {
+            const url = prompt('Enter link URL:');
+            if (url) {
+                const text = prompt('Enter link text:');
+                if (text) {
+                    const html = '<a href="' + url + '">' + text + '</a>';
+                    insertAtCursor(colIndex, html);
+                }
+            }
+        }
+
+        function insertHeading(colIndex) {
+            const text = prompt('Enter heading text:');
+            if (text) {
+                const html = '<h2>' + text + '</h2>\n';
+                insertAtCursor(colIndex, html);
+            }
+        }
+
+        function makeText(colIndex, style) {
+            const textarea = document.getElementById('column_' + colIndex);
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+
+            if (selectedText) {
+                let wrapped;
+                if (style === 'bold') {
+                    wrapped = '<strong>' + selectedText + '</strong>';
+                } else if (style === 'italic') {
+                    wrapped = '<em>' + selectedText + '</em>';
+                }
+                textarea.value = textarea.value.substring(0, start) + wrapped + textarea.value.substring(end);
+                textarea.focus();
+                textarea.selectionStart = start;
+                textarea.selectionEnd = start + wrapped.length;
+            } else {
+                alert('Please select some text first!');
+            }
+        }
+
         function updateColumnInputs() {
             const count = parseInt(document.getElementById('column_count').value);
             const container = document.getElementById('columns-container');
@@ -814,7 +910,16 @@ func EditBlockHandler(c *gin.Context) {
                 for (let i = currentCount; i < count; i++) {
                     const div = document.createElement('div');
                     div.className = 'column-input';
-                    div.innerHTML = '<label for="column_' + i + '">Column ' + (i + 1) + ':</label><textarea id="column_' + i + '" name="column_' + i + '" rows="6"></textarea>';
+                    div.innerHTML = '<label for="column_' + i + '">Column ' + (i + 1) + ':</label>' +
+                        '<div class="toolbar">' +
+                        '<button type="button" class="toolbar-btn" onclick="insertImage(' + i + ')">🖼️ Image</button>' +
+                        '<button type="button" class="toolbar-btn" onclick="insertButton(' + i + ')">🔘 Button</button>' +
+                        '<button type="button" class="toolbar-btn" onclick="insertLink(' + i + ')">🔗 Link</button>' +
+                        '<button type="button" class="toolbar-btn" onclick="insertHeading(' + i + ')">📝 Heading</button>' +
+                        '<button type="button" class="toolbar-btn" onclick="makeText(' + i + ', \'bold\')"><b>B</b></button>' +
+                        '<button type="button" class="toolbar-btn" onclick="makeText(' + i + ', \'italic\')"><i>I</i></button>' +
+                        '</div>' +
+                        '<textarea id="column_' + i + '" name="column_' + i + '" rows="8"></textarea>';
                     container.appendChild(div);
                 }
             } else if (count < currentCount) {

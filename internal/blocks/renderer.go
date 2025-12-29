@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"html"
 	"strings"
+
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // RenderBlock renders a block to HTML based on its type and data
@@ -317,13 +319,19 @@ func renderColumnsBlock(dataJSON string) (string, error) {
 		data.ColumnCount = 2
 	}
 
+	// Create HTML sanitization policy that allows images, links, buttons, and formatting
+	policy := bluemonday.UGCPolicy()
+	policy.AllowElements("button")
+	policy.AllowAttrs("class", "style").OnElements("button", "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "span")
+	policy.AllowAttrs("src", "alt", "title", "width", "height", "style").OnElements("img")
+
 	htmlStr := `<div class="columns-block" style="display: grid; grid-template-columns: repeat(` + fmt.Sprintf("%d", data.ColumnCount) + `, 1fr); gap: var(--spacing-lg, 24px); margin: var(--spacing-lg, 24px) 0;">`
 
 	// Render each column
 	for _, col := range data.Columns {
-		// Sanitize content (allow basic HTML tags)
-		safeContent := html.EscapeString(col.Content)
-		// Convert newlines to <br> for display
+		// Sanitize content using bluemonday policy (allows safe HTML)
+		safeContent := policy.Sanitize(col.Content)
+		// Convert remaining newlines to <br> for display
 		safeContent = strings.ReplaceAll(safeContent, "\n", "<br>")
 
 		htmlStr += fmt.Sprintf(`
