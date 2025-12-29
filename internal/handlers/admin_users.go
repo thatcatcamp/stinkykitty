@@ -12,6 +12,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/email"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
@@ -24,6 +25,9 @@ func UsersListHandler(c *gin.Context) {
 		return
 	}
 	currentUser := userVal.(*models.User)
+
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 
 	// Get site from context
 	siteVal, exists := c.Get("site")
@@ -95,15 +99,17 @@ func UsersListHandler(c *gin.Context) {
 				<td>
 					<div style="display: flex; gap: 8px;">
 						<form method="POST" action="/admin/users/%d/reset-password" style="display: inline;">
+							%s
 							<button type="submit" class="btn btn-small btn-secondary">Reset Password</button>
 						</form>
 						<form method="POST" action="/admin/users/%d/delete" style="display: inline;" onsubmit="return confirm('Delete this user?');">
+							%s
 							<button type="submit" class="btn btn-small btn-danger">Remove</button>
 						</form>
 					</div>
 				</td>
 			</tr>
-		`, html.EscapeString(user.Email), html.EscapeString(displaySites), html.EscapeString(user.Role), user.CreatedAt.Format("2006-01-02"), user.ID, user.ID)
+		`, html.EscapeString(user.Email), html.EscapeString(displaySites), html.EscapeString(user.Role), user.CreatedAt.Format("2006-01-02"), user.ID, csrfToken, user.ID, csrfToken)
 	}
 
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
