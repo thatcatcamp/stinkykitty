@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/search"
 	"gorm.io/gorm"
@@ -14,6 +15,7 @@ import (
 
 // NewPageFormHandler shows the form to create a new page
 func NewPageFormHandler(c *gin.Context) {
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 	html := `<!DOCTYPE html>
 <html>
 <head>
@@ -120,6 +122,7 @@ func NewPageFormHandler(c *gin.Context) {
         <h1>Create New Page</h1>
 
         <form method="POST" action="/admin/pages">
+            ` + csrfToken + `
             <div class="form-group">
                 <label for="slug">Slug:</label>
                 <input type="text" id="slug" name="slug" required placeholder="/about">
@@ -202,6 +205,9 @@ func EditPageHandler(c *gin.Context) {
 		return
 	}
 	user := userVal.(*models.User)
+
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 
 	var site *models.Site
 	siteVal, exists := c.Get("site")
@@ -297,6 +303,7 @@ func EditPageHandler(c *gin.Context) {
 		moveUpBtn := ""
 		if showMoveUp {
 			moveUpBtn = `<form method="POST" action="/admin/pages/` + pageIDStr + `/blocks/` + strconv.Itoa(int(block.ID)) + `/move-up" style="display:inline;">
+				` + csrfToken + `
 				<button type="submit" class="btn-icon">↑</button>
 			</form>`
 		} else {
@@ -306,6 +313,7 @@ func EditPageHandler(c *gin.Context) {
 		moveDownBtn := ""
 		if showMoveDown {
 			moveDownBtn = `<form method="POST" action="/admin/pages/` + pageIDStr + `/blocks/` + strconv.Itoa(int(block.ID)) + `/move-down" style="display:inline;">
+				` + csrfToken + `
 				<button type="submit" class="btn-icon">↓</button>
 			</form>`
 		} else {
@@ -323,6 +331,7 @@ func EditPageHandler(c *gin.Context) {
 					` + moveDownBtn + `
 					<a href="/admin/pages/` + pageIDStr + `/blocks/` + strconv.Itoa(int(block.ID)) + `/edit" class="btn-small">Edit</a>
 					<form method="POST" action="/admin/pages/` + pageIDStr + `/blocks/` + strconv.Itoa(int(block.ID)) + `/delete" style="display:inline;" onsubmit="return confirm('Delete this block?')">
+						` + csrfToken + `
 						<button type="submit" class="btn-small btn-danger">Delete</button>
 					</form>
 				</div>
