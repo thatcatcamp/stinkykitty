@@ -166,7 +166,7 @@ func ServeHomepage(c *gin.Context) {
 	</div>
 </body>
 </html>
-`, site.Subdomain, themeCSSStr, getGoogleAnalyticsScript(site), site.Subdomain)))
+`, site.Subdomain, GetDesignSystemCSS()+"\n"+themeCSSStr, getGoogleAnalyticsScript(site), site.Subdomain)))
 		return
 	}
 
@@ -231,7 +231,7 @@ func ServeHomepage(c *gin.Context) {
 	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), page.Title, content.String(), renderFooter(site, false))
+`, page.Title, GetDesignSystemCSS()+"\n"+themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), page.Title, content.String(), renderFooter(site, false))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
@@ -289,7 +289,7 @@ func ServePage(c *gin.Context) {
 		<a href="/admin/login">Admin Login</a>
 	</div>
 </body>
-</html>`, site.Subdomain, themeCSSStr, getGoogleAnalyticsScript(site))
+</html>`, site.Subdomain, GetDesignSystemCSS()+"\n"+themeCSSStr, getGoogleAnalyticsScript(site))
 		c.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(html))
 		return
 	}
@@ -355,7 +355,7 @@ func ServePage(c *gin.Context) {
 	%s
 </body>
 </html>
-`, page.Title, themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), page.Title, content.String(), renderFooter(site, true))
+`, page.Title, GetDesignSystemCSS()+"\n"+themeCSSStr, getGoogleAnalyticsScript(site), renderHeader(site, navigationLinks), page.Title, content.String(), renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }

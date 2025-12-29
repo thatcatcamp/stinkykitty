@@ -851,9 +851,9 @@ func EditBlockHandler(c *gin.Context) {
                 const link = prompt('Enter button link (optional, press OK to skip):');
                 let html;
                 if (link) {
-                    html = '<a href="' + link + '" style="display: inline-block; background: #2563eb; color: white; padding: 10px 20px; border-radius: 4px; text-decoration: none;">' + text + '</a>\n';
+                    html = '<a href="' + link + '" style="display: inline-block; background: var(--color-accent, #2563eb); color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;">' + text + '</a>\n';
                 } else {
-                    html = '<button style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">' + text + '</button>\n';
+                    html = '<button style="background: var(--color-accent, #2563eb); color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;">' + text + '</button>\n';
                 }
                 insertAtCursor(colIndex, html);
             }

@@ -154,13 +154,13 @@ func renderButtonBlock(dataJSON string) (string, error) {
 	safeURL := html.EscapeString(data.URL)
 
 	// Choose button color based on style
-	bgColor := "#007bff"
+	bgColor := "var(--color-accent, #2E8B9E)"
 	if data.Style == "secondary" {
 		bgColor = "#6c757d"
 	}
 
 	return fmt.Sprintf(`<div class="button-block" style="margin: 1.5em 0;">
-		<a href="%s" style="display: inline-block; padding: 12px 24px; background: %s; color: white; text-decoration: none; border-radius: 4px; font-weight: 500; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">%s</a>
+		<a href="%s" style="display: inline-block; padding: 12px 24px; background: %s; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'">%s</a>
 	</div>`, safeURL, bgColor, safeText), nil
 }
 
