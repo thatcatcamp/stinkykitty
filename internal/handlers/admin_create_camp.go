@@ -15,6 +15,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/email"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/sites"
 	"gorm.io/gorm"
@@ -551,6 +552,9 @@ func createCampStep3(c *gin.Context) {
 		baseDomain = "localhost"
 	}
 
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
+
 	// Accept both POST (with password) and GET (existing user) to support step 2 navigation
 	subdomain := c.Query("subdomain")
 	if subdomain == "" {
@@ -753,6 +757,7 @@ func createCampStep3(c *gin.Context) {
 
 		<div id="form-section">
 			<form id="create-form" method="POST" action="/admin/create-camp-submit">
+				` + csrfToken + `
 				<input type="hidden" name="subdomain" value="` + html.EscapeString(subdomain) + `">
 				<input type="hidden" name="user_id" value="` + html.EscapeString(userID) + `">
 				<input type="hidden" name="new_email" value="` + html.EscapeString(newEmail) + `">
