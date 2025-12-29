@@ -246,5 +246,14 @@ input::placeholder { color: var(--color-text-secondary); }
 .btn-danger:hover {
 	background: #b91c1c;
 }
+
+.btn-contact {
+	background: #8b5cf6;
+	color: white;
+}
+
+.btn-contact:hover {
+	background: #7c3aed;
+}
 `
 }
