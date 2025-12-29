@@ -10,10 +10,12 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/email"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
 
 func RequestPasswordResetHandler(c *gin.Context) {
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 	html := `<!DOCTYPE html>
 <html>
 <head>
@@ -24,6 +26,7 @@ func RequestPasswordResetHandler(c *gin.Context) {
 	<div class="container" style="max-width: 400px; margin: 50px auto;">
 		<h1>Reset Password</h1>
 		<form method="POST" action="/admin/reset-password">
+			` + csrfToken + `
 			<div style="margin: 20px 0;">
 				<label>Email Address:</label>
 				<input type="email" name="email" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
@@ -92,6 +95,7 @@ func ResetConfirmHandler(c *gin.Context) {
 		return
 	}
 
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -102,6 +106,7 @@ func ResetConfirmHandler(c *gin.Context) {
 	<div class="container" style="max-width: 400px; margin: 50px auto;">
 		<h1>Set New Password</h1>
 		<form method="POST" action="/admin/reset-confirm">
+			%s
 			<input type="hidden" name="token" value="%s">
 			<div style="margin: 20px 0;">
 				<label>New Password:</label>
@@ -111,7 +116,7 @@ func ResetConfirmHandler(c *gin.Context) {
 		</form>
 	</div>
 </body>
-</html>`, GetDesignSystemCSS(), token)
+</html>`, GetDesignSystemCSS(), csrfToken, token)
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
 }
 
