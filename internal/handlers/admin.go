@@ -682,7 +682,17 @@ func DashboardHandler(c *gin.Context) {
         function confirmDeleteAction() {
             if (!pendingDeleteSiteId) return;
 
-            fetch('/admin/sites/' + pendingDeleteSiteId + '/delete', { method: 'DELETE' })
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1] || '';
+
+            fetch('/admin/sites/' + pendingDeleteSiteId + '/delete', {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
+            })
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) {

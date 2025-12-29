@@ -1029,9 +1029,17 @@ func NewImageBlockFormHandler(c *gin.Context) {
             progress.style.display = 'block';
             progress.textContent = 'Uploading...';
 
+            const csrfToken = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1] || '';
+
             try {
                 const response = await fetch('/admin/upload/image', {
                     method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': csrfToken
+                    },
                     body: formData
                 });
 
