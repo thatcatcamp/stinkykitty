@@ -347,11 +347,13 @@ func EditPageHandler(c *gin.Context) {
 	if page.Published {
 		publishButton = `
                             <form method="POST" action="/admin/pages/` + pageIDStr + `/unpublish" style="display:inline;">
+                                ` + csrfToken + `
                                 <button type="submit" class="btn btn-secondary">Unpublish</button>
                             </form>`
 	} else {
 		publishButton = `
                             <form method="POST" action="/admin/pages/` + pageIDStr + `/publish" style="display:inline;">
+                                ` + csrfToken + `
                                 <button type="submit" class="btn btn-success">Publish</button>
                             </form>`
 	}
@@ -660,6 +662,7 @@ func EditPageHandler(c *gin.Context) {
                     <small>` + site.Subdomain + `</small>
                     <small>` + user.Email + `</small>
                     <form method="POST" action="/admin/logout" style="display:inline;">
+                        ` + csrfToken + `
                         <button type="submit" class="logout-btn">Sign Out</button>
                     </form>
                 </div>
@@ -672,6 +675,7 @@ func EditPageHandler(c *gin.Context) {
             <div class="page-header">
                 <div class="page-title-section">
                     <form method="POST" action="/admin/pages/` + pageIDStr + `">
+                        ` + csrfToken + `
                         <input type="text" name="title" value="` + page.Title + `" placeholder="Page Title" required>
                         <div class="page-actions">
                             <button type="submit" class="btn">Save Draft</button>
@@ -688,35 +692,43 @@ func EditPageHandler(c *gin.Context) {
                 </div>
                 <div class="add-block">
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="text">
                         <button type="submit" class="btn btn-text">+ Text</button>
                     </form>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="heading">
                         <button type="submit" class="btn btn-heading">+ Heading</button>
                     </form>
                     <a href="/admin/pages/` + pageIDStr + `/blocks/new-image" class="btn btn-image">+ Image</a>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="quote">
                         <button type="submit" class="btn btn-quote">+ Quote</button>
                     </form>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="button">
                         <button type="submit" class="btn btn-button">+ Button</button>
                     </form>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="video">
                         <button type="submit" class="btn btn-video">+ Video</button>
                     </form>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="spacer">
                         <button type="submit" class="btn btn-spacer">+ Spacer</button>
                     </form>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="contact">
                         <button type="submit" class="btn btn-contact">+ Contact Form</button>
                     </form>
                     <form method="POST" action="/admin/pages/` + pageIDStr + `/blocks" style="display:inline;">
+                        ` + csrfToken + `
                         <input type="hidden" name="type" value="columns">
                         <button type="submit" class="btn btn-columns">+ Columns</button>
                     </form>
@@ -940,6 +952,9 @@ func DeletePageHandler(c *gin.Context) {
 
 // NewImageBlockFormHandler displays the form for adding a new image block
 func NewImageBlockFormHandler(c *gin.Context) {
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
+
 	// Get site from context
 	siteVal, exists := c.Get("site")
 	if !exists {
@@ -1089,6 +1104,7 @@ func NewImageBlockFormHandler(c *gin.Context) {
         <h1>Add Image Block</h1>
 
         <form id="imageBlockForm" method="POST" action="/admin/pages/` + pageIDStr + `/blocks" onsubmit="handleSubmit(event)">
+            ` + csrfToken + `
             <div class="form-group">
                 <label for="imageFile">Select Image</label>
                 <input type="file" id="imageFile" accept="image/*" onchange="handleImageUpload()" required>
@@ -1123,6 +1139,9 @@ func NewImageBlockFormHandler(c *gin.Context) {
 
 // PagesListHandler shows the list of pages for a site
 func PagesListHandler(c *gin.Context) {
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
+
 	// Get user from context
 	userVal, exists := c.Get("user")
 	if !exists {
@@ -1192,6 +1211,7 @@ func PagesListHandler(c *gin.Context) {
 					<div class="actions">
 						<a href="/admin/pages/` + strconv.FormatUint(uint64(page.ID), 10) + `/edit" class="btn-small">Edit</a>
 						<form method="POST" action="/admin/pages/` + strconv.FormatUint(uint64(page.ID), 10) + `/delete" style="display:inline;" onsubmit="return confirm('Delete this page?')">
+							` + csrfToken + `
 							<button type="submit" class="btn-small btn-danger">Delete</button>
 						</form>
 					</div>
@@ -1205,6 +1225,7 @@ func PagesListHandler(c *gin.Context) {
 			<div class="page-item placeholder">
 				<em>No homepage yet</em>
 				<form method="POST" action="/admin/pages" style="display:inline;">
+					` + csrfToken + `
 					<input type="hidden" name="slug" value="/">
 					<input type="hidden" name="title" value="` + site.Subdomain + `">
 					<button type="submit" class="btn-small">Create Homepage</button>
@@ -1399,6 +1420,7 @@ func PagesListHandler(c *gin.Context) {
                 <div class="header-right">
                     <small>` + user.Email + `</small>
                     <form method="POST" action="/admin/logout" style="display:inline;">
+                        ` + csrfToken + `
                         <button type="submit" class="logout-btn">Sign Out</button>
                     </form>
                 </div>

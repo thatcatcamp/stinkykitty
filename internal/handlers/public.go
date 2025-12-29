@@ -15,6 +15,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/email"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"gorm.io/gorm"
 )
@@ -370,6 +371,9 @@ func ContactFormHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
+
 	// Get theme CSS from context
 	themeCSSStr := ""
 	themeVal, exists := c.Get("theme_css")
@@ -513,6 +517,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 	<div class="container">
 		<h1>Contact Us</h1>
 		<form method="POST" action="/contact">
+			%s
 			<div class="form-group">
 				<label for="name">Name</label>
 				<input type="text" id="name" name="name" required>
@@ -537,7 +542,7 @@ Do not reply to this email. To respond, contact the sender at: %s`, name, sender
 		%s
 	</div>
 </body>
-</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), renderFooter(site, true))
+</html>`, site.SiteTitle, themeCSSStr, renderHeader(site, navigationLinks), csrfToken, renderFooter(site, true))
 
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(formHTML))
 }
