@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/themes"
 )
@@ -21,6 +22,9 @@ func AdminSettingsHandler(c *gin.Context) {
 		return
 	}
 	site := siteVal.(*models.Site)
+
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 
 	// Get all available palettes
 	palettes := themes.ListPalettes()
@@ -259,6 +263,7 @@ func AdminSettingsHandler(c *gin.Context) {
 
         <div class="container">
             <form method="POST" action="/admin/settings">
+                ` + csrfToken + `
                 <div class="card">
                     <h2 class="card-title">Site Settings</h2>
                     <p class="card-description">Configure your site's information and theme</p>
