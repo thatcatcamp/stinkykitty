@@ -840,7 +840,7 @@ func EditBlockHandler(c *gin.Context) {
         function insertImage(colIndex) {
             const url = prompt('Enter image URL (e.g., /uploads/image.jpg):');
             if (url) {
-                const html = '<img src="' + url + '" style="width: 100%; height: auto;">\n';
+                const html = '<img src="' + url + '" style="width: 100%%; height: auto;">\n';
                 insertAtCursor(colIndex, html);
             }
         }
