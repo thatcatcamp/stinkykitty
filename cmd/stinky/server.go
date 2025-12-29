@@ -165,8 +165,7 @@ var serverStartCmd = &cobra.Command{
 
 				// Protected admin routes (auth required + CSRF protection)
 				adminGroup.Use(auth.RequireAuth())
-				// TODO: Enable CSRF after updating all forms with tokens
-				// adminGroup.Use(middleware.CSRFMiddleware())
+				adminGroup.Use(middleware.CSRFMiddleware())
 				{
 					adminGroup.GET("/dashboard", handlers.DashboardHandler)
 					adminGroup.GET("/pages", handlers.PagesListHandler)
