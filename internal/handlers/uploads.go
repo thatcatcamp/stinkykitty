@@ -27,6 +27,13 @@ func UploadImageHandler(c *gin.Context) {
 		return
 	}
 
+	// Validate file size (max 5MB)
+	const maxFileSize = 5 * 1024 * 1024 // 5MB in bytes
+	if file.Size > maxFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File size must be less than 5MB"})
+		return
+	}
+
 	// Validate it's an image file
 	if !uploads.IsImageFile(file.Filename) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an image (jpg, jpeg, png, gif, webp)"})

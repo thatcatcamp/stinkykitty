@@ -75,6 +75,9 @@ var serverStartCmd = &cobra.Command{
 		// Create Gin router
 		r := gin.Default()
 
+		// Add security headers middleware globally
+		r.Use(middleware.SecurityHeadersMiddleware())
+
 		// System routes (no site context needed)
 		r.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{
@@ -160,8 +163,9 @@ var serverStartCmd = &cobra.Command{
 				// Logout route (auth required)
 				adminGroup.POST("/logout", auth.RequireAuth(), handlers.LogoutHandler)
 
-				// Protected admin routes (auth required)
+				// Protected admin routes (auth required + CSRF protection)
 				adminGroup.Use(auth.RequireAuth())
+				adminGroup.Use(middleware.CSRFMiddleware())
 				{
 					adminGroup.GET("/dashboard", handlers.DashboardHandler)
 					adminGroup.GET("/pages", handlers.PagesListHandler)

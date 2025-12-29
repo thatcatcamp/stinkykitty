@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,31 @@ func SaveUploadedFile(file *multipart.FileHeader, siteDir string) (string, error
 		return "", fmt.Errorf("failed to open uploaded file: %w", err)
 	}
 	defer src.Close()
+
+	// Validate file content type using Magic Bytes
+	buffer := make([]byte, 512) // Read first 512 bytes for content type detection
+	n, err := src.Read(buffer)
+	if err != nil && err != io.EOF {
+		return "", fmt.Errorf("failed to read file for validation: %w", err)
+	}
+
+	contentType := http.DetectContentType(buffer[:n])
+	validTypes := []string{"image/jpeg", "image/png", "image/gif", "image/webp"}
+	isValid := false
+	for _, validType := range validTypes {
+		if contentType == validType {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		return "", fmt.Errorf("invalid file type: %s (only images allowed)", contentType)
+	}
+
+	// Reset file pointer to beginning after validation
+	if _, err := src.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("failed to reset file pointer: %w", err)
+	}
 
 	// Create destination file
 	dst, err := os.Create(fullPath)
