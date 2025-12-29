@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"gorm.io/gorm"
 )
@@ -20,6 +21,9 @@ func MenuHandler(c *gin.Context) {
 		return
 	}
 	site := siteVal.(*models.Site)
+
+	// Get CSRF token
+	csrfToken := middleware.GetCSRFTokenHTML(c)
 
 	// Load all menu items ordered by position
 	var menuItems []models.MenuItem
@@ -42,6 +46,7 @@ func MenuHandler(c *gin.Context) {
 		moveUpBtn := ""
 		if showMoveUp {
 			moveUpBtn = `<form method="POST" action="/admin/menu/` + strconv.Itoa(int(item.ID)) + `/move-up" style="display:inline;">
+				` + csrfToken + `
 				<button type="submit" class="btn-icon">↑</button>
 			</form>`
 		} else {
@@ -51,6 +56,7 @@ func MenuHandler(c *gin.Context) {
 		moveDownBtn := ""
 		if showMoveDown {
 			moveDownBtn = `<form method="POST" action="/admin/menu/` + strconv.Itoa(int(item.ID)) + `/move-down" style="display:inline;">
+				` + csrfToken + `
 				<button type="submit" class="btn-icon">↓</button>
 			</form>`
 		} else {
@@ -67,11 +73,12 @@ func MenuHandler(c *gin.Context) {
 					%s
 					%s
 					<form method="POST" action="/admin/menu/%d/delete" style="display:inline;" onsubmit="return confirm('Delete this menu item?')">
+						%s
 						<button type="submit" class="btn-small btn-danger">Delete</button>
 					</form>
 				</div>
 			</div>
-		`, item.Label, item.URL, moveUpBtn, moveDownBtn, item.ID)
+		`, item.Label, item.URL, moveUpBtn, moveDownBtn, item.ID, csrfToken)
 	}
 
 	if menuItemsHTML == "" {
@@ -157,6 +164,7 @@ func MenuHandler(c *gin.Context) {
         <div class="section">
             <h2>Add Menu Item</h2>
             <form method="POST" action="/admin/menu">
+                ` + csrfToken + `
                 <div class="form-group">
                     <label for="label">Link Text</label>
                     <input type="text" id="label" name="label" placeholder="e.g., About Us" required>
