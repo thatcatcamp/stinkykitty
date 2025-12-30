@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -264,6 +265,72 @@ func MediaTagAutocompleteHandler(c *gin.Context) {
 		Pluck("tag_name", &tags)
 
 	c.JSON(http.StatusOK, gin.H{"tags": tags})
+}
+
+// MediaDeleteHandler handles image deletion with usage checking
+func MediaDeleteHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Site not found"})
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get media item ID
+	mediaIDStr := c.Param("id")
+	mediaID, err := strconv.ParseUint(mediaIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid media ID"})
+		return
+	}
+
+	// Get media item
+	var mediaItem models.MediaItem
+	if err := db.GetDB().Where("id = ? AND site_id = ?", mediaID, site.ID).First(&mediaItem).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Media item not found"})
+		return
+	}
+
+	// Check usage
+	imageURL := "/uploads/" + mediaItem.Filename
+	usages := media.FindImageUsage(db.GetDB(), site.ID, imageURL)
+
+	// If checking usage (not force delete)
+	forceDelete := c.Query("force") == "true"
+	if len(usages) > 0 && !forceDelete {
+		// Return usage information
+		var usageList []string
+		for _, usage := range usages {
+			usageList = append(usageList, fmt.Sprintf("%s → %s", usage.PageTitle, usage.BlockType))
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"in_use":  true,
+			"usages":  usageList,
+			"message": fmt.Sprintf("This image is used in %d place(s)", len(usages)),
+		})
+		return
+	}
+
+	// Delete file
+	filePath := filepath.Join(site.SiteDir, "uploads", mediaItem.Filename)
+	if err := os.Remove(filePath); err != nil {
+		// Log error but continue (file might already be deleted)
+		fmt.Printf("Warning: Failed to delete file %s: %v\n", filePath, err)
+	}
+
+	// Delete thumbnail
+	thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", mediaItem.Filename)
+	os.Remove(thumbPath) // Ignore error
+
+	// Delete database record (and tags via cascade)
+	if err := db.GetDB().Delete(&mediaItem).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete media item"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 // renderMediaLibraryPage renders the HTML for the media library
@@ -587,13 +654,12 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 
 		// Delete media
 		function deleteMedia(id) {
-			if (!confirm('Delete this image? This cannot be undone.')) return;
-
 			const csrfToken = document.cookie
 				.split('; ')
 				.find(row => row.startsWith('csrf_token='))
 				?.split('=')[1] || '';
 
+			// First, check if image is in use
 			fetch('/admin/media/' + id + '/delete', {
 				method: 'POST',
 				headers: {
@@ -602,10 +668,35 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			})
 			.then(r => r.json())
 			.then(data => {
-				if (data.success) {
-					location.reload();
+				if (data.in_use) {
+					// Show warning with usage locations
+					const usageList = data.usages.join('\\n• ');
+					const confirmMsg = '⚠️ ' + data.message + ':\\n\\n• ' + usageList + '\\n\\nDelete anyway? Blocks will show broken links.';
+
+					if (confirm(confirmMsg)) {
+						// Force delete
+						fetch('/admin/media/' + id + '/delete?force=true', {
+							method: 'POST',
+							headers: {
+								'X-CSRF-Token': csrfToken
+							}
+						})
+						.then(r => r.json())
+						.then(data => {
+							if (data.success) {
+								location.reload();
+							} else {
+								alert('Failed to delete: ' + (data.error || 'Unknown error'));
+							}
+						});
+					}
+				} else if (data.success) {
+					// Orphaned image - simple confirm
+					if (confirm('Delete this image? This cannot be undone.')) {
+						location.reload();
+					}
 				} else {
-					alert('Failed to delete: ' + (data.error || 'Unknown error'));
+					alert('Error: ' + (data.error || 'Unknown error'));
 				}
 			});
 		}
