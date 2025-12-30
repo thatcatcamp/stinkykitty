@@ -1034,6 +1034,17 @@ func NewImageBlockFormHandler(c *gin.Context) {
                 .find(row => row.startsWith('csrf_token='))
                 ?.substring('csrf_token='.length) || '';
 
+            console.log('CSRF Debug - All cookies:', document.cookie);
+            console.log('CSRF Debug - Token found:', csrfToken);
+            console.log('CSRF Debug - Token length:', csrfToken.length);
+
+            if (!csrfToken) {
+                progress.textContent = 'Error: CSRF token not found in cookies';
+                progress.style.background = '#f8d7da';
+                progress.style.color = '#721c24';
+                return;
+            }
+
             try {
                 const response = await fetch('/admin/upload/image', {
                     method: 'POST',
@@ -1044,7 +1055,8 @@ func NewImageBlockFormHandler(c *gin.Context) {
                 });
 
                 if (!response.ok) {
-                    throw new Error('Upload failed');
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Upload failed');
                 }
 
                 const data = await response.json();
