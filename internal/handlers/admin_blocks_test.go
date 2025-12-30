@@ -575,6 +575,13 @@ func TestUpdateBlockHandler_Success(t *testing.T) {
 	}
 	testDB.Create(site)
 
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
+
 	// Create page
 	page := &models.Page{
 		SiteID:    site.ID,
@@ -607,6 +614,7 @@ func TestUpdateBlockHandler_Success(t *testing.T) {
 		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
+	c.Set("user", user)
 
 	// Execute
 	UpdateBlockHandler(c)
@@ -648,6 +656,13 @@ func TestUpdateBlockHandler_EmptyContent(t *testing.T) {
 	}
 	testDB.Create(site)
 
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
+
 	// Create page
 	page := &models.Page{
 		SiteID:    site.ID,
@@ -680,6 +695,7 @@ func TestUpdateBlockHandler_EmptyContent(t *testing.T) {
 		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site)
+	c.Set("user", user)
 
 	// Execute
 	UpdateBlockHandler(c)
@@ -724,6 +740,13 @@ func TestUpdateBlockHandler_SecurityCheck(t *testing.T) {
 	}
 	testDB.Create(site2)
 
+	// Create test user
+	user := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+	}
+	testDB.Create(user)
+
 	// Create page for site1
 	page := &models.Page{
 		SiteID:    site1.ID,
@@ -756,6 +779,7 @@ func TestUpdateBlockHandler_SecurityCheck(t *testing.T) {
 		{Key: "block_id", Value: "1"},
 	}
 	c.Set("site", site2) // Different site!
+	c.Set("user", user)
 
 	// Execute
 	UpdateBlockHandler(c)
