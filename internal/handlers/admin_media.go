@@ -179,6 +179,93 @@ func MediaUploadHandler(c *gin.Context) {
 	})
 }
 
+// MediaTagsHandler handles adding/removing tags
+func MediaTagsHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Site not found"})
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get media item ID
+	mediaIDStr := c.Param("id")
+	mediaID, err := strconv.ParseUint(mediaIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid media ID"})
+		return
+	}
+
+	// Verify media item belongs to this site
+	var mediaItem models.MediaItem
+	if err := db.GetDB().Where("id = ? AND site_id = ?", mediaID, site.ID).First(&mediaItem).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Media item not found"})
+		return
+	}
+
+	action := c.PostForm("action")
+	tagName := c.PostForm("tag")
+
+	if tagName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tag name required"})
+		return
+	}
+
+	if action == "add" {
+		// Check if tag already exists
+		var existingTag models.MediaTag
+		err := db.GetDB().Where("media_item_id = ? AND tag_name = ?", mediaID, tagName).First(&existingTag).Error
+		if err == nil {
+			c.JSON(http.StatusOK, gin.H{"success": true, "message": "Tag already exists"})
+			return
+		}
+
+		// Add tag
+		tag := models.MediaTag{
+			MediaItemID: uint(mediaID),
+			TagName:     tagName,
+		}
+		if err := db.GetDB().Create(&tag).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add tag"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	} else if action == "remove" {
+		// Remove tag
+		if err := db.GetDB().Where("media_item_id = ? AND tag_name = ?", mediaID, tagName).Delete(&models.MediaTag{}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove tag"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true})
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid action"})
+	}
+}
+
+// MediaTagAutocompleteHandler returns existing tags for autocomplete
+func MediaTagAutocompleteHandler(c *gin.Context) {
+	// Get site from context
+	siteVal, exists := c.Get("site")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Site not found"})
+		return
+	}
+	site := siteVal.(*models.Site)
+
+	// Get distinct tags for this site
+	var tags []string
+	db.GetDB().Model(&models.MediaTag{}).
+		Joins("JOIN media_items ON media_items.id = media_tags.media_item_id").
+		Where("media_items.site_id = ?", site.ID).
+		Distinct("tag_name").
+		Pluck("tag_name", &tags)
+
+	c.JSON(http.StatusOK, gin.H{"tags": tags})
+}
+
 // renderMediaLibraryPage renders the HTML for the media library
 func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User, items []models.MediaItem, page, totalPages int, search, tagFilter string, showOrphaned bool) {
 	csrfToken := middleware.GetCSRFTokenHTML(c)
@@ -470,14 +557,57 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			window.location.href = '/admin/media?orphaned=' + (current === 'true' ? 'false' : 'true');
 		}
 
-		// Edit tags (placeholder)
+		// Edit tags
 		function editTags(id) {
-			alert('Tag editing coming in next task!');
+			const tagName = prompt('Enter tag name:');
+			if (!tagName) return;
+
+			const csrfToken = document.cookie
+				.split('; ')
+				.find(row => row.startsWith('csrf_token='))
+				?.split('=')[1] || '';
+
+			fetch('/admin/media/' + id + '/tags', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+					'X-CSRF-Token': csrfToken
+				},
+				body: 'action=add&tag=' + encodeURIComponent(tagName)
+			})
+			.then(r => r.json())
+			.then(data => {
+				if (data.success) {
+					location.reload();
+				} else {
+					alert('Failed to add tag: ' + (data.error || 'Unknown error'));
+				}
+			});
 		}
 
-		// Delete media (placeholder)
+		// Delete media
 		function deleteMedia(id) {
-			alert('Delete functionality coming in next task!');
+			if (!confirm('Delete this image? This cannot be undone.')) return;
+
+			const csrfToken = document.cookie
+				.split('; ')
+				.find(row => row.startsWith('csrf_token='))
+				?.split('=')[1] || '';
+
+			fetch('/admin/media/' + id + '/delete', {
+				method: 'POST',
+				headers: {
+					'X-CSRF-Token': csrfToken
+				}
+			})
+			.then(r => r.json())
+			.then(data => {
+				if (data.success) {
+					location.reload();
+				} else {
+					alert('Failed to delete: ' + (data.error || 'Unknown error'));
+				}
+			});
 		}
 	</script>
 </body>

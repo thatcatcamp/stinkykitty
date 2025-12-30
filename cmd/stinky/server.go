@@ -196,6 +196,8 @@ var serverStartCmd = &cobra.Command{
 					// Media library
 					adminGroup.GET("/media", handlers.MediaLibraryHandler)
 					adminGroup.POST("/media/upload", handlers.MediaUploadHandler)
+					adminGroup.POST("/media/:id/tags", handlers.MediaTagsHandler)
+					adminGroup.GET("/media/tags/autocomplete", handlers.MediaTagAutocompleteHandler)
 					// Delete site (owner/admin only)
 					adminGroup.DELETE("/sites/:id/delete", handlers.DeleteSiteHandler)
 					// Create camp form
