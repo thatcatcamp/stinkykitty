@@ -226,7 +226,9 @@ func TestRestoreDatabaseFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test database: %v", err)
 	}
-	testDBFile.WriteString("test database content v1")
+	if _, err := testDBFile.WriteString("test database content v1"); err != nil {
+		t.Fatalf("Failed to write test database: %v", err)
+	}
 	testDBFile.Close()
 
 	// Create a backup containing the test database
@@ -236,7 +238,9 @@ func TestRestoreDatabaseFile(t *testing.T) {
 	}
 
 	// Modify the original database to simulate a different state
-	os.WriteFile(testDBPath, []byte("modified content"), 0644)
+	if err := os.WriteFile(testDBPath, []byte("modified content"), 0644); err != nil {
+		t.Fatalf("Failed to modify test database: %v", err)
+	}
 
 	// Restore from backup - database.db should be extracted and restored
 	err = manager.RestoreBackup(backupFile)
@@ -270,8 +274,13 @@ func TestRestoreAndValidateDatabase(t *testing.T) {
 	testDBPath := filepath.Join(tmpDir, "test.db")
 
 	// Initialize an actual SQLite database (minimal)
-	f, _ := os.Create(testDBPath)
-	f.WriteString("SQLite format 3\x00")
+	f, err := os.Create(testDBPath)
+	if err != nil {
+		t.Fatalf("Failed to create test database: %v", err)
+	}
+	if _, err := f.WriteString("SQLite format 3\x00"); err != nil {
+		t.Fatalf("Failed to write test database: %v", err)
+	}
 	f.Close()
 
 	// Create backup

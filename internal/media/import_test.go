@@ -25,7 +25,9 @@ func TestImportExistingUploads(t *testing.T) {
 	// Create test site
 	tmpDir := t.TempDir()
 	uploadsDir := filepath.Join(tmpDir, "uploads")
-	os.MkdirAll(uploadsDir, 0755)
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		t.Fatalf("Failed to create uploads directory: %v", err)
+	}
 
 	user := models.User{Email: "test@example.com", PasswordHash: "hash"}
 	db.Create(&user)
@@ -38,9 +40,15 @@ func TestImportExistingUploads(t *testing.T) {
 	db.Create(&site)
 
 	// Create fake image files
-	os.WriteFile(filepath.Join(uploadsDir, "abc123.jpg"), []byte("fake image"), 0644)
-	os.WriteFile(filepath.Join(uploadsDir, "def456.png"), []byte("fake image 2"), 0644)
-	os.WriteFile(filepath.Join(uploadsDir, "notanimage.txt"), []byte("text"), 0644)
+	if err := os.WriteFile(filepath.Join(uploadsDir, "abc123.jpg"), []byte("fake image"), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(uploadsDir, "def456.png"), []byte("fake image 2"), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(uploadsDir, "notanimage.txt"), []byte("text"), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
 
 	// Import
 	count, err := ImportExistingUploads(db, site)

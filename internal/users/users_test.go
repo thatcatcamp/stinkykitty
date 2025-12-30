@@ -15,7 +15,9 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("Failed to open test database: %v", err)
 	}
 
-	db.AutoMigrate(&models.User{}, &models.Site{}, &models.SiteUser{}, &models.Page{}, &models.Block{})
+	if err := db.AutoMigrate(&models.User{}, &models.Site{}, &models.SiteUser{}, &models.Page{}, &models.Block{}); err != nil {
+		t.Fatalf("Failed to migrate: %v", err)
+	}
 	return db
 }
 
@@ -39,7 +41,9 @@ func TestCreateUser(t *testing.T) {
 func TestGetUserByEmail(t *testing.T) {
 	db := setupTestDB(t)
 
-	CreateUser(db, "find@example.com", "password")
+	if _, err := CreateUser(db, "find@example.com", "password"); err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
 
 	user, err := GetUserByEmail(db, "find@example.com")
 	if err != nil {
@@ -54,8 +58,12 @@ func TestGetUserByEmail(t *testing.T) {
 func TestListUsers(t *testing.T) {
 	db := setupTestDB(t)
 
-	CreateUser(db, "user1@example.com", "pass1")
-	CreateUser(db, "user2@example.com", "pass2")
+	if _, err := CreateUser(db, "user1@example.com", "pass1"); err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
+	if _, err := CreateUser(db, "user2@example.com", "pass2"); err != nil {
+		t.Fatalf("Failed to create user: %v", err)
+	}
 
 	users, err := ListUsers(db)
 	if err != nil {
