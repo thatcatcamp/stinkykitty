@@ -3,12 +3,28 @@ package media
 import (
 	"fmt"
 	"image"
+	_ "image/gif"   // Register GIF decoder
 	"image/jpeg"
+	_ "image/png"   // Register PNG decoder
 	"os"
 	"path/filepath"
 
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"  // Register WebP decoder
 )
+
+const (
+	// ThumbnailWidth is the standard thumbnail width as per design spec
+	ThumbnailWidth = 200
+	// ThumbnailHeight is the standard thumbnail height as per design spec
+	ThumbnailHeight = 200
+)
+
+// GenerateStandardThumbnail creates a 200x200 thumbnail as per design specification.
+// This is a convenience wrapper around GenerateThumbnail with standard dimensions.
+func GenerateStandardThumbnail(srcPath, dstPath string) error {
+	return GenerateThumbnail(srcPath, dstPath, ThumbnailWidth, ThumbnailHeight)
+}
 
 // GenerateThumbnail creates a thumbnail from an image file
 // Uses center crop to maintain exact dimensions
