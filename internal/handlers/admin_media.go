@@ -33,6 +33,21 @@ func MediaLibraryHandler(c *gin.Context) {
 	}
 	user := userVal.(*models.User)
 
+	// Auto-import existing uploads on first use
+	var itemCount int64
+	db.GetDB().Model(&models.MediaItem{}).Where("site_id = ?", site.ID).Count(&itemCount)
+
+	if itemCount == 0 {
+		// First time accessing media library - import existing uploads
+		count, err := media.ImportExistingUploads(db.GetDB(), *site)
+		if err != nil {
+			fmt.Printf("Warning: Failed to import existing uploads: %v\n", err)
+		} else if count > 0 {
+			// Could add a flash message here, but for now just log
+			fmt.Printf("Imported %d existing images for site %s\n", count, site.Subdomain)
+		}
+	}
+
 	// Get pagination parameters
 	page := 1
 	if pageStr := c.Query("page"); pageStr != "" {
