@@ -5,10 +5,12 @@ import (
 	"fmt"
 	htmlpkg "html"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/media"
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/search"
@@ -1028,6 +1030,14 @@ func UpdateBlockHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
+	// Get user from context
+	userVal, exists := c.Get("user")
+	if !exists {
+		c.String(http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+	user := userVal.(*models.User)
+
 	// Get page ID and block ID from URL parameters
 	pageIDStr := c.Param("id")
 	pageID, err := strconv.Atoi(pageIDStr)
@@ -1098,6 +1108,22 @@ func UpdateBlockHandler(c *gin.Context) {
 					return
 				}
 				url = webPath
+
+				// Create media item record for tracking
+				mediaItem := models.MediaItem{
+					SiteID:       site.ID,
+					Filename:     filepath.Base(webPath),
+					OriginalName: fileHeader.Filename,
+					FileSize:     fileHeader.Size,
+					MimeType:     fileHeader.Header.Get("Content-Type"),
+					UploadedBy:   user.ID,
+				}
+				db.GetDB().Create(&mediaItem) // Ignore error - not critical
+
+				// Generate thumbnail if possible
+				srcPath := filepath.Join(site.SiteDir, "uploads", mediaItem.Filename)
+				thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", mediaItem.Filename)
+				media.GenerateThumbnail(srcPath, thumbPath, 200, 200) // Ignore error
 			}
 			// Otherwise, keep existing URL
 		}
