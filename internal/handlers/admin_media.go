@@ -619,7 +619,7 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			e.preventDefault();
 			uploadZone.classList.remove('drag-over');
 			fileInput.files = e.dataTransfer.files;
-			uploadForm.submit();
+			uploadFiles();
 		});
 
 		// Click to browse
@@ -631,9 +631,40 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 
 		fileInput.addEventListener('change', () => {
 			if (fileInput.files.length > 0) {
-				uploadForm.submit();
+				uploadFiles();
 			}
 		});
+
+		// Upload files via AJAX
+		async function uploadFiles() {
+			const formData = new FormData(uploadForm);
+
+			try {
+				const csrfToken = document.cookie
+					.split('; ')
+					.find(row => row.startsWith('csrf_token='))
+					?.split('=')[1] || '';
+
+				const response = await fetch('/admin/media/upload', {
+					method: 'POST',
+					headers: {
+						'X-CSRF-Token': csrfToken
+					},
+					body: formData
+				});
+
+				const result = await response.json();
+
+				if (result.success) {
+					// Reload page to show new images
+					window.location.reload();
+				} else {
+					alert('Upload failed: ' + (result.error || 'Unknown error'));
+				}
+			} catch (error) {
+				alert('Upload failed: ' + error.message);
+			}
+		}
 
 		// Search
 		const searchInput = document.getElementById('search-input');
