@@ -39,12 +39,12 @@ jobs:
       - name: Build for scan
         run: go build -o stinky ./cmd/stinky
       - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@v0.18.2
+        uses: anchore/sbom-action@v0.21.0
         with:
           file: ./stinky
           artifact-name: sbom.spdx.json
       - name: Scan Vulnerabilities (Grype)
-        uses: anchore/scan-action@v5.2.0
+        uses: anchore/scan-action@v7.2.2
         with:
           path: "."
           fail-build: false
