@@ -640,10 +640,12 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			const formData = new FormData(uploadForm);
 
 			try {
-				const csrfToken = document.cookie
-					.split('; ')
-					.find(row => row.startsWith('csrf_token='))
-					?.split('=')[1] || '';
+				const csrfToken = decodeURIComponent(
+					document.cookie
+						.split('; ')
+						.find(row => row.startsWith('csrf_token='))
+						?.substring('csrf_token='.length) || ''
+				);
 
 				const response = await fetch('/admin/media/upload', {
 					method: 'POST',
@@ -687,10 +689,12 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			const tagName = prompt('Enter tag name:');
 			if (!tagName) return;
 
-			const csrfToken = document.cookie
-				.split('; ')
-				.find(row => row.startsWith('csrf_token='))
-				?.substring('csrf_token='.length) || '';
+			const csrfToken = decodeURIComponent(
+				document.cookie
+					.split('; ')
+					.find(row => row.startsWith('csrf_token='))
+					?.substring('csrf_token='.length) || ''
+			);
 
 			fetch('/admin/media/' + id + '/tags', {
 				method: 'POST',
@@ -712,10 +716,12 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 
 		// Delete media
 		function deleteMedia(id) {
-			const csrfToken = document.cookie
-				.split('; ')
-				.find(row => row.startsWith('csrf_token='))
-				?.substring('csrf_token='.length) || '';
+			const csrfToken = decodeURIComponent(
+				document.cookie
+					.split('; ')
+					.find(row => row.startsWith('csrf_token='))
+					?.substring('csrf_token='.length) || ''
+			);
 
 			// First, check if image is in use
 			fetch('/admin/media/' + id + '/delete', {

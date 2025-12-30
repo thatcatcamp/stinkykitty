@@ -1029,10 +1029,12 @@ func NewImageBlockFormHandler(c *gin.Context) {
             progress.style.display = 'block';
             progress.textContent = 'Uploading...';
 
-            const csrfToken = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrf_token='))
-                ?.substring('csrf_token='.length) || '';
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('csrf_token='))
+                    ?.substring('csrf_token='.length) || ''
+            );
 
             console.log('CSRF Debug - All cookies:', document.cookie);
             console.log('CSRF Debug - Token found:', csrfToken);
