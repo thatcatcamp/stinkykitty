@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package themes
 
 // Palette defines the base colors for a theme

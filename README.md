@@ -127,7 +127,9 @@ See [TLS Design Document](docs/plans/2025-12-23-automatic-ssl-design.md) for arc
 
 ## License
 
-TBD
+MIT License - see [LICENSE](LICENSE) file for details
+
+Copyright (c) 2025 CAT Camp
 
 ## Contributing
 

@@ -56,3 +56,9 @@ temp/
 
 # Git worktrees
 .worktrees/
+
+# Build artifacts
+dist/
+*.sbom.*.json
+*.sig
+*.asc

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // internal/handlers/admin_delete_site.go
 package handlers
 

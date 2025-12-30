@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write # For cosign
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        run: |
+          # Linux AMD64
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }}" -o dist/stinky-linux-amd64 ./cmd/stinky
+
+          # Linux ARM64
+          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }}" -o dist/stinky-linux-arm64 ./cmd/stinky
+
+          # macOS AMD64
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }}" -o dist/stinky-darwin-amd64 ./cmd/stinky
+
+          # macOS ARM64 (Apple Silicon)
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.Version=${{ steps.get_version.outputs.VERSION }}" -o dist/stinky-darwin-arm64 ./cmd/stinky
+
+      - name: Generate SBOMs
+        run: |
+          for binary in dist/stinky-*; do
+            syft "$binary" -o spdx-json="${binary}.sbom.spdx.json"
+            syft "$binary" -o cyclonedx-json="${binary}.sbom.cyclonedx.json"
+          done
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum stinky-* > checksums.txt
+          cd ..
+
+      - name: Sign artifacts with cosign
+        run: |
+          # Sign binaries and SBOMs
+          for file in dist/stinky-*; do
+            cosign sign-blob --yes "$file" --output-signature "${file}.sig"
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/stinky-*
+            dist/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-artifacts
+          path: |
+            dist/*.sbom.*.json
+            dist/*.sig
+          retention-days: 90

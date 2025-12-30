@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 package themes
 
 // Colors represents all generated colors for a theme

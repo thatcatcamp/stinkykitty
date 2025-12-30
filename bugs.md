@@ -1,18 +1,26 @@
-- now that we've got multiple sites and users, the old UI isn't enough (we need at least a user
-management screen to reset/delete) - unless there's a better pattern the Wordpress method
-seems 'okay' (although i don't like it much - if you got a better design feel free)
+- edit users throwing a new sql error:
+025/12/29 12:16:16 /home/lpreimesberger/projects/mex/stinkycat/internal/handlers/admin_users.go:61 DISTINCT aggregates must have exactly one argument
+[0.094ms] [rows:-] 
+                        SELECT u.id, u.email, u.created_at,
+                                   GROUP_CONCAT(DISTINCT s.subdomain, ' | ') as sites,
+                                   CASE
+                                           WHEN COUNT(DISTINCT CASE WHEN s.owner_id = u.id THEN s.id END) > 0 THEN 'owner'
+                                           WHEN MAX(su.role) = 'admin' THEN 'admin'
+                                           ELSE 'member'
+                                   END as role
+                        FROM users u
+                        LEFT JOIN site_users su ON u.id = su.user_id
+                        LEFT JOIN sites s ON su.site_id = s.id OR s.owner_id = u.id
+                        WHERE u.deleted_at IS NULL
+                        GROUP BY u.id
+                        ORDER BY u.email
 
-![img.png](img.png)
 
-- under this set up, we need to see our 'subusers' (i.e. - users on sites we're admin on or
-all for the superuser of the root site), be able to reset or set their passwords
-- each subsite also needs a field to add the google analytics (unless this can be done from 
-the service itself?  seems a lot of data for sqlite)
-- sites need a fixed header bar like the primary admin (image below) with the site name (and maybe move
-the floating admin link in the footer can change to a 'Login' button there)
+ 
+- CSS on the header is a bit weird, we want something like this:
 ![img_1.png](img_1.png)
+- but got this:
+![img_3.png](img_3.png)
 - 
-- an editable copyright for each site that appears on the footer for each page would be a nice touch
-- a column control in the editor would go a long way toward making this really powerful, see this
-image of our current (wordpress) camp site, we'd like to be able to make columns of buttons, text and images
+- column is nice for text, but can we support embedded iamges and button like this:
 ![img_2.png](img_2.png)
