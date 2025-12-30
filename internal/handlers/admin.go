@@ -581,6 +581,14 @@ func DashboardHandler(c *gin.Context) {
                 <div class="hero-buttons">
                     <a href="/admin/users" class="btn btn-secondary">Manage Users</a>
                     <a href="/admin/create-camp" class="btn">+ Create New Camp</a>
+                    <a href="/admin/media" class="btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        Media Library
+                    </a>
                 </div>
             </div>
 
