@@ -690,7 +690,7 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			const csrfToken = document.cookie
 				.split('; ')
 				.find(row => row.startsWith('csrf_token='))
-				?.split('=')[1] || '';
+				?.substring('csrf_token='.length) || '';
 
 			fetch('/admin/media/' + id + '/tags', {
 				method: 'POST',
@@ -715,7 +715,7 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			const csrfToken = document.cookie
 				.split('; ')
 				.find(row => row.startsWith('csrf_token='))
-				?.split('=')[1] || '';
+				?.substring('csrf_token='.length) || '';
 
 			// First, check if image is in use
 			fetch('/admin/media/' + id + '/delete', {

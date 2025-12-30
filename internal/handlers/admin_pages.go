@@ -1032,7 +1032,7 @@ func NewImageBlockFormHandler(c *gin.Context) {
             const csrfToken = document.cookie
                 .split('; ')
                 .find(row => row.startsWith('csrf_token='))
-                ?.split('=')[1] || '';
+                ?.substring('csrf_token='.length) || '';
 
             try {
                 const response = await fetch('/admin/upload/image', {
