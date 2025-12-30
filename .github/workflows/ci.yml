@@ -39,18 +39,18 @@ jobs:
       - name: Build for scan
         run: go build -o stinky ./cmd/stinky
       - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@v0.18.2
         with:
           file: ./stinky
           artifact-name: sbom.spdx.json
       - name: Scan Vulnerabilities (Grype)
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v5.2.0
         with:
           path: "."
           fail-build: false
           output-format: sarif
       - name: Upload Grype Scan Results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
 
@@ -78,7 +78,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: '~> v2'
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
