@@ -38,6 +38,8 @@ func InitDB(dbType, dbPath string) error {
 		&models.Page{},
 		&models.Block{},
 		&models.MenuItem{},
+		&models.MediaItem{},
+		&models.MediaTag{},
 	); err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}

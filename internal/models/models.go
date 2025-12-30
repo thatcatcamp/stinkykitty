@@ -120,14 +120,14 @@ type MediaItem struct {
 	// Relationships
 	Site Site        `gorm:"foreignKey:SiteID"`
 	User User        `gorm:"foreignKey:UploadedBy"`
-	Tags []MediaTag  `gorm:"foreignKey:MediaItemID"`
+	Tags []MediaTag  `gorm:"foreignKey:MediaItemID;constraint:OnDelete:CASCADE"`
 }
 
 // MediaTag represents a tag on a media item
 type MediaTag struct {
 	ID          uint   `gorm:"primaryKey"`
 	MediaItemID uint   `gorm:"not null;index:idx_media_tag"`
-	TagName     string `gorm:"not null;index:idx_media_tag"`
+	TagName     string `gorm:"not null;index:idx_media_tag;index:idx_tag_name"`
 	CreatedAt   time.Time
 
 	// Relationships
