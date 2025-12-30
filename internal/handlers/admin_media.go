@@ -106,9 +106,12 @@ func MediaLibraryHandler(c *gin.Context) {
 	}
 
 	// Calculate pagination
-	totalPages := int(totalCount) / limit
-	if int(totalCount)%limit != 0 {
-		totalPages++
+	totalPages := 0
+	if !showOrphaned {
+		totalPages = int(totalCount) / limit
+		if int(totalCount)%limit != 0 {
+			totalPages++
+		}
 	}
 
 	// Render page
@@ -147,6 +150,15 @@ func MediaUploadHandler(c *gin.Context) {
 	}
 
 	var uploadedItems []models.MediaItem
+
+	// Validate file sizes
+	const MaxFileSize = 5 * 1024 * 1024 // 5MB
+	for _, fileHeader := range files {
+		if fileHeader.Size > MaxFileSize {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s exceeds 5MB limit", fileHeader.Filename)})
+			return
+		}
+	}
 
 	for _, fileHeader := range files {
 		// Save file using existing upload utility

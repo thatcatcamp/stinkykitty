@@ -78,6 +78,11 @@ func ImportExistingUploads(db *gorm.DB, site models.Site) (int, error) {
 			return count, fmt.Errorf("failed to create media item for %s: %w", filename, err)
 		}
 
+		// Generate thumbnail for imported image
+		srcPath := filepath.Join(site.SiteDir, "uploads", filename)
+		thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", filename)
+		GenerateThumbnail(srcPath, thumbPath, 200, 200) // Ignore error - best effort
+
 		count++
 	}
 
