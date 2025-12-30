@@ -3,6 +3,7 @@ package handlers
 const (
 	// Color Palette
 	ColorBgPrimary   = "#FAFAF8" // Cream background
+	ColorBgSecondary = "#F3F4F6" // Light gray background
 	ColorBgCard      = "#FFFFFF" // White card
 	ColorTextPrimary = "#2D2D2D" // Dark charcoal
 	ColorTextSecond  = "#6B7280" // Light gray
@@ -19,6 +20,7 @@ func GetDesignSystemCSS() string {
 	return `
 :root {
 	--color-bg-primary: ` + ColorBgPrimary + `;
+	--color-bg-secondary: ` + ColorBgSecondary + `;
 	--color-bg-card: ` + ColorBgCard + `;
 	--color-text-primary: ` + ColorTextPrimary + `;
 	--color-text-secondary: ` + ColorTextSecond + `;
@@ -254,6 +256,33 @@ input::placeholder { color: var(--color-text-secondary); }
 
 .btn-contact:hover {
 	background: #7c3aed;
+}
+
+/* Admin Container */
+.admin-container {
+	max-width: 1400px;
+	margin: 0 auto;
+	padding: var(--spacing-lg);
+}
+
+/* Button Styles */
+.btn {
+	background: var(--color-accent);
+	color: white;
+	padding: var(--spacing-base) calc(var(--spacing-base) * 1.5);
+	border: none;
+	border-radius: var(--radius-base);
+	font-size: 14px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity var(--transition);
+	text-decoration: none;
+	display: inline-block;
+}
+
+.btn:hover {
+	opacity: 0.9;
+	color: white;
 }
 `
 }
