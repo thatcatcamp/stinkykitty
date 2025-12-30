@@ -6,6 +6,7 @@ A multi-tenant CMS platform designed to replace WordPress for Burning Man camps 
 
 - **Multi-tenant architecture** - Host unlimited camp websites
 - **Block-based content editor** - Text, images, headings, quotes, buttons, video, columns
+- **Media library** - Centralized image management with tagging, search, and usage tracking
 - **User management** - Manage site users, reset passwords, control access
 - **Google Analytics** - Built-in analytics tracking
 - **Customizable themes** - Colors, fonts, layouts
@@ -122,6 +123,7 @@ See [TLS Design Document](docs/plans/2025-12-23-automatic-ssl-design.md) for arc
 - [Features Guide](docs/FEATURES.md) - Complete feature documentation
 - [Design Document](docs/plans/2025-12-20-stinkykitty-cms-design.md) - Complete system design
 - [TLS/SSL Design](docs/plans/2025-12-23-automatic-ssl-design.md) - Automatic HTTPS configuration
+- [Media Library Design](docs/plans/2025-12-29-media-library-design.md) - Image management and organization
 
 ## License
 
