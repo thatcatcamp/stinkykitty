@@ -104,6 +104,36 @@ type Block struct {
 	Page Page `gorm:"foreignKey:PageID"`
 }
 
+// MediaItem represents an uploaded image in the media library
+type MediaItem struct {
+	ID           uint   `gorm:"primaryKey"`
+	SiteID       uint   `gorm:"not null;index"`
+	Filename     string `gorm:"not null"`        // Random hex filename
+	OriginalName string `gorm:"not null"`        // User's original filename
+	FileSize     int64  `gorm:"not null"`        // Bytes
+	MimeType     string `gorm:"not null"`        // image/jpeg, etc.
+	UploadedBy   uint   `gorm:"not null"`        // User ID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
+
+	// Relationships
+	Site Site        `gorm:"foreignKey:SiteID"`
+	User User        `gorm:"foreignKey:UploadedBy"`
+	Tags []MediaTag  `gorm:"foreignKey:MediaItemID"`
+}
+
+// MediaTag represents a tag on a media item
+type MediaTag struct {
+	ID          uint   `gorm:"primaryKey"`
+	MediaItemID uint   `gorm:"not null;index:idx_media_tag"`
+	TagName     string `gorm:"not null;index:idx_media_tag"`
+	CreatedAt   time.Time
+
+	// Relationships
+	MediaItem MediaItem `gorm:"foreignKey:MediaItemID"`
+}
+
 // MenuItem represents a navigation menu item
 type MenuItem struct {
 	ID        uint   `gorm:"primaryKey"`
@@ -141,6 +171,14 @@ func (Block) TableName() string {
 
 func (MenuItem) TableName() string {
 	return "menu_items"
+}
+
+func (MediaItem) TableName() string {
+	return "media_items"
+}
+
+func (MediaTag) TableName() string {
+	return "media_tags"
 }
 
 // GetAllowedIPs returns the list of allowed IP ranges for this site
