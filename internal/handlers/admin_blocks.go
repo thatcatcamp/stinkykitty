@@ -12,6 +12,7 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/search"
+	"github.com/thatcatcamp/stinkykitty/internal/uploads"
 )
 
 // CreateBlockHandler creates a new block for a page
@@ -394,9 +395,18 @@ func EditBlockHandler(c *gin.Context) {
         <div class="preview">
             <img src="%s" alt="%s">
         </div>
-        <form method="POST" action="/admin/pages/%s/blocks/%s">
+        <form method="POST" action="/admin/pages/%s/blocks/%s" enctype="multipart/form-data">
             ` + middleware.GetCSRFTokenHTML(c) + `
             <input type="hidden" name="url" value="%s">
+
+            <label for="image">Upload New Image (optional):</label>
+            <input type="file" id="image" name="image" accept="image/*">
+            <button type="button" onclick="openMediaPicker()" style="margin-top: 8px; padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;">
+                Browse Library
+            </button>
+            <input type="hidden" id="selected-image-url" name="selected_image_url">
+            <p class="help-text">Upload a new image or browse the media library.</p>
+
             <label for="alt">Alt Text:</label>
             <input type="text" id="alt" name="alt" value="%s" required>
             <p class="help-text">Required for accessibility. Describe what's in the image.</p>
@@ -411,6 +421,19 @@ func EditBlockHandler(c *gin.Context) {
             </div>
         </form>
     </div>
+    <script>
+        function openMediaPicker() {
+            window.open('/admin/media/picker', 'mediaPicker', 'width=800,height=600');
+        }
+
+        // Listen for selected image
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'image-selected') {
+                document.getElementById('selected-image-url').value = event.data.url;
+                alert('Image selected: ' + event.data.filename);
+            }
+        });
+    </script>
 </body>
 </html>`, imageData.URL, imageData.Alt, pageIDStr, blockIDStr, imageData.URL, imageData.Alt, imageData.Caption, pageIDStr)
 	} else if block.Type == "heading" {
@@ -1058,6 +1081,27 @@ func UpdateBlockHandler(c *gin.Context) {
 		url := c.PostForm("url")
 		alt := c.PostForm("alt")
 		caption := c.PostForm("caption")
+
+		// Check if image was selected from library
+		selectedImageURL := c.PostForm("selected_image_url")
+		if selectedImageURL != "" {
+			// Use selected image from library
+			url = selectedImageURL
+		} else {
+			// Check if new image was uploaded
+			fileHeader, err := c.FormFile("image")
+			if err == nil && fileHeader != nil {
+				// Upload new image (reuse existing upload utility)
+				webPath, err := uploads.SaveUploadedFile(fileHeader, site.SiteDir)
+				if err != nil {
+					c.String(http.StatusBadRequest, fmt.Sprintf("Failed to upload image: %v", err))
+					return
+				}
+				url = webPath
+			}
+			// Otherwise, keep existing URL
+		}
+
 		data := map[string]string{
 			"url":     url,
 			"alt":     alt,
