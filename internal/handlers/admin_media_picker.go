@@ -110,8 +110,13 @@ func MediaPickerHandler(c *gin.Context) {
 <body>
 	<div class="picker-header">
 		<h2>Select Image</h2>
-		<button onclick="window.close()" class="btn btn-secondary">Cancel</button>
+		<div style="display: flex; gap: 10px;">
+			<button onclick="document.getElementById('upload-input').click()" class="btn btn-primary">Upload New</button>
+			<button onclick="window.close()" class="btn btn-secondary">Cancel</button>
+		</div>
 	</div>
+
+	<input type="file" id="upload-input" accept="image/*" style="display: none;">
 
 	<div class="picker-grid">
 		%s
