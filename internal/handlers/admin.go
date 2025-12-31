@@ -226,6 +226,10 @@ func LoginFormHandler(c *gin.Context) {
                     <input type="password" id="password" name="password" autocomplete="current-password" required>
                 </div>
 
+                <div style="text-align: right; margin-bottom: var(--spacing-md);">
+                    <a href="/admin/reset-password" style="color: var(--color-accent); text-decoration: none; font-size: 14px;">Forgot password?</a>
+                </div>
+
                 <button type="submit" class="login-button">Sign In</button>
             </form>
 
