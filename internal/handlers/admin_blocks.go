@@ -873,10 +873,16 @@ func EditBlockHandler(c *gin.Context) {
         }
 
         function insertImage(colIndex) {
-            const url = prompt('Enter image URL (e.g., /uploads/image.jpg):');
-            if (url) {
-                const html = '<img src="' + url + '" style="width: 100%%; height: auto;">\n';
-                insertAtCursor(colIndex, html);
+            // Open media picker in popup window
+            const picker = window.open(
+                '/admin/media/picker',
+                'mediaPicker',
+                'width=800,height=600,scrollbars=yes'
+            );
+
+            // Store which column we're inserting into
+            if (picker) {
+                window.currentColumnIndex = colIndex;
             }
         }
 
@@ -964,6 +970,26 @@ func EditBlockHandler(c *gin.Context) {
                 }
             }
         }
+
+        // Listen for image selection from picker modal
+        window.addEventListener('message', function(event) {
+            // Validate origin (same-origin only)
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+
+            // Check message type
+            if (event.data && event.data.type === 'image-selected') {
+                const url = event.data.url;
+                const colIndex = window.currentColumnIndex;
+
+                if (url && colIndex !== undefined) {
+                    // Insert image tag
+                    const html = '<img src="' + url + '" style="width: 100%; height: auto;">\n';
+                    insertAtCursor(colIndex, html);
+                }
+            }
+        });
     </script>
 </head>
 <body>

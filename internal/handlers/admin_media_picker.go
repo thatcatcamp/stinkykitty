@@ -110,8 +110,13 @@ func MediaPickerHandler(c *gin.Context) {
 <body>
 	<div class="picker-header">
 		<h2>Select Image</h2>
-		<button onclick="window.close()" class="btn btn-secondary">Cancel</button>
+		<div style="display: flex; gap: 10px;">
+			<button onclick="document.getElementById('upload-input').click()" class="btn btn-primary">Upload New</button>
+			<button onclick="window.close()" class="btn btn-secondary">Cancel</button>
+		</div>
 	</div>
+
+	<input type="file" id="upload-input" accept="image/*" style="display: none;">
 
 	<div class="picker-grid">
 		%s
@@ -125,10 +130,62 @@ func MediaPickerHandler(c *gin.Context) {
 					type: 'image-selected',
 					url: url,
 					filename: filename
-				}, '*');
+				}, window.location.origin);
 				window.close();
 			}
 		}
+
+		// Get CSRF token from cookie
+		function getCsrfToken() {
+			const value = document.cookie
+				.split('; ')
+				.find(row => row.startsWith('csrf_token='));
+			if (!value) return '';
+			return decodeURIComponent(value.split('=')[1]);
+		}
+
+		// Handle file upload
+		document.addEventListener('DOMContentLoaded', function() {
+			const uploadInput = document.getElementById('upload-input');
+			if (uploadInput) {
+				uploadInput.addEventListener('change', async function(e) {
+					const file = e.target.files[0];
+					if (!file) return;
+
+					// Show loading state
+					const header = document.querySelector('.picker-header h2');
+					const originalText = header.textContent;
+					header.textContent = 'Uploading...';
+
+					try {
+						const formData = new FormData();
+						formData.append('images', file);
+
+						const response = await fetch('/admin/media/upload', {
+							method: 'POST',
+							headers: {
+								'X-CSRF-Token': getCsrfToken()
+							},
+							body: formData
+						});
+
+						const result = await response.json();
+
+						if (result.success && result.items && result.items.length > 0) {
+							const uploadedItem = result.items[0];
+							const url = '/uploads/' + uploadedItem.Filename;
+							selectImage(url, uploadedItem.OriginalName);
+						} else {
+							alert('Upload failed: ' + (result.error || 'Unknown error'));
+							header.textContent = originalText;
+						}
+					} catch (error) {
+						alert('Upload failed: ' + error.message);
+						header.textContent = originalText;
+					}
+				});
+			}
+		});
 	</script>
 </body>
 </html>`, GetDesignSystemCSS(), imageGrid)
