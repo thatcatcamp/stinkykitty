@@ -68,12 +68,14 @@ func ServeUploadedFile(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
-	// Get filename from URL
+	// Get filename from URL (strip leading slash if present)
 	filename := c.Param("filepath")
+	if len(filename) > 0 && filename[0] == '/' {
+		filename = filename[1:]
+	}
 
-	// Build full path to file
-	sitesRoot := config.GetString("sites_root")
-	filePath := filepath.Join(sitesRoot, site.Subdomain, "uploads", filename)
+	// Build full path to file using site's directory
+	filePath := filepath.Join(site.SiteDir, "uploads", filename)
 
 	// Serve the file
 	c.File(filePath)

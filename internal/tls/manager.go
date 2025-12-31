@@ -29,13 +29,15 @@ func NewManager(db *gorm.DB, cfg *Config) (*Manager, error) {
 	}
 
 	// Create certmagic config
+	// Use a variable so the GetConfigForCert callback can reference it
+	var magicCfg *certmagic.Config
 	cache := certmagic.NewCache(certmagic.CacheOptions{
 		GetConfigForCert: func(certmagic.Certificate) (*certmagic.Config, error) {
-			return &certmagic.Default, nil
+			return magicCfg, nil
 		},
 	})
 
-	magicCfg := certmagic.New(cache, certmagic.Config{
+	magicCfg = certmagic.New(cache, certmagic.Config{
 		Storage: &certmagic.FileStorage{Path: cfg.CertDir},
 	})
 
