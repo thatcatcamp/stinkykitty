@@ -691,10 +691,12 @@ func DashboardHandler(c *gin.Context) {
         function confirmDeleteAction() {
             if (!pendingDeleteSiteId) return;
 
-            const csrfToken = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrf_token='))
-                ?.split('=')[1] || '';
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('csrf_token='))
+                    ?.substring('csrf_token='.length) || ''
+            );
 
             fetch('/admin/sites/' + pendingDeleteSiteId + '/delete', {
                 method: 'DELETE',
