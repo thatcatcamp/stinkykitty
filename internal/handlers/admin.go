@@ -63,7 +63,45 @@ func LoginHandler(c *gin.Context) {
 	}
 
 	if !hasAccess {
-		c.String(http.StatusForbidden, "You don't have access to this site")
+		// User doesn't have access to this site, but might have access to others
+		// Find sites they DO have access to and redirect them there
+		baseDomain := config.GetString("server.base_domain")
+		if baseDomain == "" {
+			baseDomain = "localhost"
+		}
+
+		type UserSite struct {
+			Subdomain    string
+			CustomDomain *string
+		}
+		var userSites []UserSite
+
+		// Get sites where user is owner or has site_users entry
+		db.GetDB().Raw(`
+			SELECT DISTINCT sites.subdomain, sites.custom_domain
+			FROM sites
+			LEFT JOIN site_users ON sites.id = site_users.site_id
+			WHERE sites.owner_id = ? OR site_users.user_id = ?
+			ORDER BY sites.subdomain
+			LIMIT 1
+		`, user.ID, user.ID).Scan(&userSites)
+
+		if len(userSites) > 0 {
+			// Redirect to their first accessible site
+			site := userSites[0]
+			var domain string
+			if site.CustomDomain != nil && *site.CustomDomain != "" {
+				domain = *site.CustomDomain
+			} else {
+				domain = site.Subdomain + "." + baseDomain
+			}
+			loginURL := fmt.Sprintf("https://%s/admin/login", domain)
+			c.Redirect(http.StatusFound, loginURL)
+			return
+		}
+
+		// No accessible sites found
+		c.String(http.StatusForbidden, "You don't have access to any sites")
 		return
 	}
 
