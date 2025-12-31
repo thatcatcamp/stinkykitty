@@ -1,6 +1,8 @@
 # Binaries
 bin
 /stinky
+/stinkycat
+stinkycat
 *.exe
 *.exe~
 *.dll
