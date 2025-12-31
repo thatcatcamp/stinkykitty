@@ -3,6 +3,7 @@ package sites
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/thatcatcamp/stinkykitty/internal/models"
@@ -28,6 +29,23 @@ func CreateSite(db *gorm.DB, subdomain string, ownerID uint, sitesDir string) (*
 	// Generate unique site directory name
 	siteDir := filepath.Join(sitesDir, fmt.Sprintf("site-%s", subdomain))
 	dbPath := filepath.Join(siteDir, "site.db")
+
+	// Create site directory structure
+	if err := os.MkdirAll(siteDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create site directory: %w", err)
+	}
+
+	// Create uploads directory
+	uploadsDir := filepath.Join(siteDir, "uploads")
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create uploads directory: %w", err)
+	}
+
+	// Create thumbnails directory
+	thumbsDir := filepath.Join(uploadsDir, "thumbs")
+	if err := os.MkdirAll(thumbsDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create thumbnails directory: %w", err)
+	}
 
 	site := &models.Site{
 		Subdomain:    subdomain,
