@@ -78,3 +78,33 @@ Output: `© 2025 My Camp Site - All rights reserved.`
 - Columns stack vertically on mobile
 - Keep column content balanced
 - Use with other blocks for rich layouts
+
+## Media Library
+
+### Media Picker Integration
+Click "Add Image" in the block editor to open the integrated media library picker. No more typing URLs manually!
+
+**Features:**
+- Browse all existing images in your media library
+- Upload new images directly from the picker
+- Uploaded images automatically added to media library
+- No orphaned images in uploads directory
+- Click any image to instantly insert it
+
+### Using the Media Picker
+1. Edit any page with a column block
+2. Click **Add Image** button in the column editor
+3. **Option A: Select existing image**
+   - Browse the grid of available images
+   - Click any image to insert it
+4. **Option B: Upload new image**
+   - Click **Upload New** button
+   - Select an image file (max 5MB)
+   - Image uploads and inserts automatically
+
+### Benefits
+- Visual browsing of available images
+- Reuse images across multiple pages
+- All uploads tracked in media library
+- Automatic thumbnail generation
+- Fast, seamless workflow
