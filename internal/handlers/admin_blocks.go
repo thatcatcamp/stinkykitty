@@ -873,10 +873,16 @@ func EditBlockHandler(c *gin.Context) {
         }
 
         function insertImage(colIndex) {
-            const url = prompt('Enter image URL (e.g., /uploads/image.jpg):');
-            if (url) {
-                const html = '<img src="' + url + '" style="width: 100%%; height: auto;">\n';
-                insertAtCursor(colIndex, html);
+            // Open media picker in popup window
+            const picker = window.open(
+                '/admin/media/picker',
+                'mediaPicker',
+                'width=800,height=600,scrollbars=yes'
+            );
+
+            // Store which column we're inserting into
+            if (picker) {
+                window.currentColumnIndex = colIndex;
             }
         }
 
