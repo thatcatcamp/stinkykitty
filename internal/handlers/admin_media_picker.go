@@ -130,7 +130,7 @@ func MediaPickerHandler(c *gin.Context) {
 					type: 'image-selected',
 					url: url,
 					filename: filename
-				}, '*');
+				}, window.location.origin);
 				window.close();
 			}
 		}
