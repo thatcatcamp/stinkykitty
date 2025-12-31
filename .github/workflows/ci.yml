@@ -44,17 +44,17 @@ jobs:
           file: ./stinky
           artifact-name: sbom.spdx.json
       - name: Scan Vulnerabilities (Grype)
+        id: scan
         uses: anchore/scan-action@v7.2.2
         with:
           path: "."
           fail-build: false
-          output-format: sarif
-          sarif-file: results.sarif
+        continue-on-error: true
       - name: Upload Grype Scan Results
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
-          sarif_file: results.sarif
+          sarif_file: ${{ steps.scan.outputs.sarif }}
 
   release:
     name: Build & Release
