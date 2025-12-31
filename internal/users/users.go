@@ -107,3 +107,28 @@ func DeleteUser(db *gorm.DB, id uint) error {
 func ValidatePassword(user *models.User, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 }
+
+// UpdatePassword updates a user's password
+func UpdatePassword(db *gorm.DB, email, newPassword string) error {
+	// Normalize email to lowercase
+	email = strings.ToLower(strings.TrimSpace(email))
+
+	// Find user
+	user, err := GetUserByEmail(db, email)
+	if err != nil {
+		return err
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Update password
+	if err := db.Model(user).Update("password_hash", string(hashedPassword)).Error; err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return nil
+}

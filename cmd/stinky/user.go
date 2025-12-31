@@ -101,10 +101,42 @@ var userDeleteCmd = &cobra.Command{
 	},
 }
 
+var userPasswdCmd = &cobra.Command{
+	Use:   "passwd <email>",
+	Short: "Change a user's password",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := initSystemDB(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		email := args[0]
+
+		// Get password from stdin (hidden)
+		fmt.Print("Enter new password: ")
+		passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading password: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println() // Print newline after hidden input
+		password := string(passwordBytes)
+
+		if err := users.UpdatePassword(db.GetDB(), email, password); err != nil {
+			fmt.Fprintf(os.Stderr, "Error updating password: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Password updated for: %s\n", email)
+	},
+}
+
 func init() {
 	userCmd.AddCommand(userCreateCmd)
 	userCmd.AddCommand(userListCmd)
 	userCmd.AddCommand(userDeleteCmd)
+	userCmd.AddCommand(userPasswdCmd)
 	rootCmd.AddCommand(userCmd)
 }
 
