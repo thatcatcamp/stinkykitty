@@ -1,5 +1,7 @@
 # StinkyKitty CMS
 
+![alt text](stinky.png)
+
 A multi-tenant CMS platform designed to replace WordPress for Burning Man camps and similar community groups.
 
 ## Features
