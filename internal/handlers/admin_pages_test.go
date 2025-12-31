@@ -38,7 +38,9 @@ func TestEditPageHandler_PageNotFound(t *testing.T) {
 	db.SetDB(testDB)
 
 	// Auto-migrate User model
-	testDB.AutoMigrate(&models.User{})
+	if err := testDB.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("Failed to migrate User model: %v", err)
+	}
 
 	// Create test user
 	user := &models.User{
@@ -89,7 +91,9 @@ func TestEditPageHandler_InvalidPageID(t *testing.T) {
 	db.SetDB(testDB)
 
 	// Auto-migrate User model
-	testDB.AutoMigrate(&models.User{})
+	if err := testDB.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("Failed to migrate User model: %v", err)
+	}
 
 	// Create test user
 	user := &models.User{
@@ -137,7 +141,9 @@ func TestEditPageHandler_WrongSite(t *testing.T) {
 	db.SetDB(testDB)
 
 	// Auto-migrate User model
-	testDB.AutoMigrate(&models.User{})
+	if err := testDB.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("Failed to migrate User model: %v", err)
+	}
 
 	// Create test user
 	user := &models.User{
@@ -201,7 +207,9 @@ func TestEditPageHandler_Success(t *testing.T) {
 	db.SetDB(testDB)
 
 	// Auto-migrate User model
-	testDB.AutoMigrate(&models.User{})
+	if err := testDB.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("Failed to migrate User model: %v", err)
+	}
 
 	// Create test user
 	user := &models.User{
@@ -332,7 +340,9 @@ func TestEditPageHandler_EmptyBlocks(t *testing.T) {
 	db.SetDB(testDB)
 
 	// Auto-migrate User model
-	testDB.AutoMigrate(&models.User{})
+	if err := testDB.AutoMigrate(&models.User{}); err != nil {
+		t.Fatalf("Failed to migrate User model: %v", err)
+	}
 
 	// Create test user
 	user := &models.User{

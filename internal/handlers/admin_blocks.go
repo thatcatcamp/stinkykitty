@@ -1124,7 +1124,7 @@ func UpdateBlockHandler(c *gin.Context) {
 				// Generate thumbnail if possible
 				srcPath := filepath.Join(site.SiteDir, "uploads", mediaItem.Filename)
 				thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", mediaItem.Filename)
-				media.GenerateThumbnail(srcPath, thumbPath, 200, 200) // Ignore error
+				_ = media.GenerateThumbnail(srcPath, thumbPath, 200, 200) // Ignore error
 			}
 			// Otherwise, keep existing URL
 		}

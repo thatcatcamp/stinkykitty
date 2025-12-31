@@ -17,7 +17,7 @@ for Burning Man camps and similar community groups.
 It provides rich, professional-looking websites while avoiding the security
 and maintenance nightmares of plugin ecosystems.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 

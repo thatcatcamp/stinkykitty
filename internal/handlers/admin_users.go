@@ -216,7 +216,7 @@ func UserResetPasswordHandler(c *gin.Context) {
 	if err == nil {
 		baseDomain := config.GetString("server.base_domain")
 		resetURL := fmt.Sprintf("https://%s/admin/reset-confirm?token=%s", baseDomain, token)
-		svc.SendPasswordReset(user.Email, resetURL)
+		_ = svc.SendPasswordReset(user.Email, resetURL)
 	}
 
 	c.Redirect(http.StatusFound, "/admin/users?message=Password+reset+email+sent")

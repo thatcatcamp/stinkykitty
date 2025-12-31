@@ -61,7 +61,7 @@ var backupRestoreCmd = &cobra.Command{
 		fmt.Printf("Are you sure you want to restore from '%s'? (type 'yes' to confirm): ", filename)
 
 		var confirmation string
-		fmt.Scanln(&confirmation)
+		_, _ = fmt.Scanln(&confirmation)
 		if confirmation != "yes" {
 			fmt.Println("Restore cancelled.")
 			return
@@ -90,7 +90,7 @@ var backupDeleteCmd = &cobra.Command{
 		fmt.Printf("Are you sure you want to delete '%s'? (type 'yes' to confirm): ", filename)
 
 		var confirmation string
-		fmt.Scanln(&confirmation)
+		_, _ = fmt.Scanln(&confirmation)
 		if confirmation != "yes" {
 			fmt.Println("Deletion cancelled.")
 			return

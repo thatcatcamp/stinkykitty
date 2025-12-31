@@ -82,7 +82,10 @@ func TestGenerateThumbnailMaintainsAspectRatio(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test image: %v", err)
 	}
-	jpeg.Encode(file, img, nil)
+	if err := jpeg.Encode(file, img, nil); err != nil {
+		file.Close()
+		t.Fatalf("Failed to encode test image: %v", err)
+	}
 	file.Close()
 
 	// Generate 50x50 thumbnail (should crop to maintain aspect ratio)

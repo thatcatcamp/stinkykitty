@@ -193,8 +193,12 @@ func TestSearchHandlerIsolation(t *testing.T) {
 	testDB.Create(&block2)
 
 	// Index both pages
-	search.IndexPage(testDB, &page1)
-	search.IndexPage(testDB, &page2)
+	if err := search.IndexPage(testDB, &page1); err != nil {
+		t.Fatalf("Failed to index page1: %v", err)
+	}
+	if err := search.IndexPage(testDB, &page2); err != nil {
+		t.Fatalf("Failed to index page2: %v", err)
+	}
 
 	// Setup Gin router with site1 context
 	gin.SetMode(gin.TestMode)

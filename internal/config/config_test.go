@@ -27,7 +27,9 @@ func TestGetConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	InitConfig(configPath)
+	if err := InitConfig(configPath); err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
 
 	// Test getting a default value
 	value := GetString("server.http_port")
@@ -40,7 +42,9 @@ func TestSetConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yaml")
 
-	InitConfig(configPath)
+	if err := InitConfig(configPath); err != nil {
+		t.Fatalf("InitConfig failed: %v", err)
+	}
 
 	err := Set("server.http_port", "8080")
 	if err != nil {

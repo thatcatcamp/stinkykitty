@@ -63,7 +63,7 @@ func RequestPasswordResetSubmitHandler(c *gin.Context) {
 			baseDomain = "campasaur.us"
 		}
 		resetURL := fmt.Sprintf("https://%s/admin/reset-confirm?token=%s", baseDomain, token)
-		svc.SendPasswordReset(emailAddr, resetURL)
+		_ = svc.SendPasswordReset(emailAddr, resetURL)
 	}
 
 	c.Redirect(http.StatusFound, "/admin/reset-sent")

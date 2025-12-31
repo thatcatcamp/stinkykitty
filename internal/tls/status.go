@@ -38,7 +38,7 @@ func (m *Manager) GetCertificateStatus() ([]CertificateStatus, error) {
 		var certPath string
 
 		// Walk the certificates directory looking for this domain's cert
-		filepath.Walk(certsBaseDir, func(path string, info os.FileInfo, err error) error {
+		_ = filepath.Walk(certsBaseDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil || info.IsDir() {
 				return nil
 			}

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -220,7 +221,7 @@ func (bm *BackupManager) RestoreBackup(filename string) error {
 		}
 
 		// Only process files that start with "uploads/" prefix
-		if !filepath.HasPrefix(header.Name, "uploads/") && header.Name != "uploads" {
+		if !strings.HasPrefix(header.Name, "uploads/") && header.Name != "uploads" {
 			continue
 		}
 
