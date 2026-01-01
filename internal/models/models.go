@@ -107,21 +107,23 @@ type Block struct {
 
 // MediaItem represents an uploaded image in the media library
 type MediaItem struct {
-	ID           uint   `gorm:"primaryKey"`
-	SiteID       uint   `gorm:"not null;index"`
-	Filename     string `gorm:"not null"`        // Random hex filename
-	OriginalName string `gorm:"not null"`        // User's original filename
-	FileSize     int64  `gorm:"not null"`        // Bytes
-	MimeType     string `gorm:"not null"`        // image/jpeg, etc.
-	UploadedBy   uint   `gorm:"not null"`        // User ID
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	DeletedAt    gorm.DeletedAt `gorm:"index"`
+	ID                 uint   `gorm:"primaryKey"`
+	SiteID             uint   `gorm:"not null;index"`
+	Filename           string `gorm:"not null"`        // Random hex filename
+	OriginalName       string `gorm:"not null"`        // User's original filename
+	FileSize           int64  `gorm:"not null"`        // Bytes
+	MimeType           string `gorm:"not null"`        // image/jpeg, etc.
+	UploadedBy         uint   `gorm:"not null"`        // User ID
+	UploadedFromSiteID uint   `gorm:"index"`           // Track which site it was uploaded from
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	DeletedAt          gorm.DeletedAt `gorm:"index"`
 
 	// Relationships
-	Site Site        `gorm:"foreignKey:SiteID"`
-	User User        `gorm:"foreignKey:UploadedBy"`
-	Tags []MediaTag  `gorm:"foreignKey:MediaItemID;constraint:OnDelete:CASCADE"`
+	Site             Site       `gorm:"foreignKey:SiteID"`
+	User             User       `gorm:"foreignKey:UploadedBy"`
+	UploadedFromSite Site       `gorm:"foreignKey:UploadedFromSiteID"`
+	Tags             []MediaTag `gorm:"foreignKey:MediaItemID;constraint:OnDelete:CASCADE"`
 }
 
 // MediaTag represents a tag on a media item
