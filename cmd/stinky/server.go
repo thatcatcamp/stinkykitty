@@ -87,6 +87,9 @@ var serverStartCmd = &cobra.Command{
 			})
 		})
 
+		// Centralized asset serving (no site context needed)
+		r.GET("/assets/:filename", handlers.ServeAssetHandler)
+
 		// Get base domain from config (default to localhost for development)
 		baseDomain := config.GetString("server.base_domain")
 		if baseDomain == "" {
