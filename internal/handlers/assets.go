@@ -3,7 +3,9 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thatcatcamp/stinkykitty/internal/config"
@@ -29,9 +31,18 @@ func ServeAssetHandler(c *gin.Context) {
 		mediaDir = "/var/lib/stinkykitty/media"
 	}
 
-	// Build full path to file
-	filePath := filepath.Join(mediaDir, filename)
+	// Build full path to file (files are in uploads subdirectory)
+	uploadsDir := filepath.Join(mediaDir, "uploads")
+	filePath := filepath.Join(uploadsDir, filename)
+
+	// CRITICAL: Prevent path traversal attacks
+	cleanPath := filepath.Clean(filePath)
+	cleanUploadsDir := filepath.Clean(uploadsDir)
+	if !strings.HasPrefix(cleanPath, cleanUploadsDir+string(os.PathSeparator)) {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
 
 	// Serve the file
-	c.File(filePath)
+	c.File(cleanPath)
 }
