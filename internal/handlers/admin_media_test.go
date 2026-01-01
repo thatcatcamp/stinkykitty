@@ -127,9 +127,9 @@ func TestMediaUploadHandler_CentralizedStorage(t *testing.T) {
 		t.Errorf("Expected UploadedFromSiteID to be %d, got %d", site.ID, *mediaItem.UploadedFromSiteID)
 	}
 
-	// Verify SiteID is set (media is still associated with site for now)
-	if mediaItem.SiteID != site.ID {
-		t.Errorf("Expected SiteID to be %d, got %d", site.ID, mediaItem.SiteID)
+	// Verify SiteID is NOT set (media is centralized, not site-specific)
+	if mediaItem.SiteID != 0 {
+		t.Errorf("Expected SiteID to be 0 (not set), got %d", mediaItem.SiteID)
 	}
 
 	// Verify UploadedBy is set

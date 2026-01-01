@@ -257,7 +257,6 @@ func MediaUploadHandler(c *gin.Context) {
 
 		// Create database record with UploadedFromSiteID
 		mediaItem := models.MediaItem{
-			SiteID:             site.ID,
 			Filename:           filename,
 			OriginalName:       fileHeader.Filename,
 			FileSize:           fileSize,
