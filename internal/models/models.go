@@ -114,7 +114,7 @@ type MediaItem struct {
 	FileSize           int64  `gorm:"not null"`        // Bytes
 	MimeType           string `gorm:"not null"`        // image/jpeg, etc.
 	UploadedBy         uint   `gorm:"not null"`        // User ID
-	UploadedFromSiteID uint   `gorm:"index"`           // Track which site it was uploaded from
+	UploadedFromSiteID *uint  `gorm:"index"`           // Track which site it was uploaded from
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
@@ -122,7 +122,7 @@ type MediaItem struct {
 	// Relationships
 	Site             Site       `gorm:"foreignKey:SiteID"`
 	User             User       `gorm:"foreignKey:UploadedBy"`
-	UploadedFromSite Site       `gorm:"foreignKey:UploadedFromSiteID"`
+	UploadedFromSite Site       `gorm:"foreignKey:UploadedFromSiteID;constraint:OnDelete:SET NULL"`
 	Tags             []MediaTag `gorm:"foreignKey:MediaItemID;constraint:OnDelete:CASCADE"`
 }
 
