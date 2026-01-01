@@ -2,19 +2,101 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/media"
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
-	"github.com/thatcatcamp/stinkykitty/internal/uploads"
 )
+
+// saveToCentralizedStorage saves an uploaded file to centralized media storage
+func saveToCentralizedStorage(file *multipart.FileHeader) (string, error) {
+	// Get centralized media directory from config
+	mediaDir := config.GetString("storage.media_dir")
+	if mediaDir == "" {
+		return "", fmt.Errorf("storage.media_dir not configured")
+	}
+
+	// Create media directory if it doesn't exist
+	if err := os.MkdirAll(mediaDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create media directory: %w", err)
+	}
+
+	// Generate random filename to avoid conflicts
+	randomBytes := make([]byte, 16)
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", fmt.Errorf("failed to generate random filename: %w", err)
+	}
+	randomName := hex.EncodeToString(randomBytes)
+
+	// Get file extension
+	ext := filepath.Ext(file.Filename)
+	if ext == "" {
+		ext = ".jpg" // default
+	}
+
+	// Create full path
+	filename := randomName + ext
+	fullPath := filepath.Join(mediaDir, filename)
+
+	// Open uploaded file
+	src, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open uploaded file: %w", err)
+	}
+	defer src.Close()
+
+	// Validate file content type using Magic Bytes
+	buffer := make([]byte, 512)
+	n, err := src.Read(buffer)
+	if err != nil && err != io.EOF {
+		return "", fmt.Errorf("failed to read file for validation: %w", err)
+	}
+
+	contentType := http.DetectContentType(buffer[:n])
+	validTypes := []string{"image/jpeg", "image/png", "image/gif", "image/webp"}
+	isValid := false
+	for _, validType := range validTypes {
+		if contentType == validType {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		return "", fmt.Errorf("invalid file type: %s (only images allowed)", contentType)
+	}
+
+	// Reset file pointer to beginning after validation
+	if _, err := src.Seek(0, io.SeekStart); err != nil {
+		return "", fmt.Errorf("failed to reset file pointer: %w", err)
+	}
+
+	// Create destination file
+	dst, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer dst.Close()
+
+	// Copy file contents
+	if _, err := io.Copy(dst, src); err != nil {
+		return "", fmt.Errorf("failed to copy file: %w", err)
+	}
+
+	// Return just the filename (not web path)
+	return filename, nil
+}
 
 // MediaLibraryHandler shows the main media library page
 func MediaLibraryHandler(c *gin.Context) {
@@ -162,28 +244,26 @@ func MediaUploadHandler(c *gin.Context) {
 	}
 
 	for _, fileHeader := range files {
-		// Save file using existing upload utility
-		webPath, err := uploads.SaveUploadedFile(fileHeader, site.SiteDir)
+		// Save file to centralized storage
+		filename, err := saveToCentralizedStorage(fileHeader)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to upload %s: %v", fileHeader.Filename, err)})
 			return
 		}
 
-		// Extract filename from web path (/uploads/abc123.jpg -> abc123.jpg)
-		filename := filepath.Base(webPath)
-
 		// Get file info
 		fileSize := fileHeader.Size
 		mimeType := fileHeader.Header.Get("Content-Type")
 
-		// Create database record
+		// Create database record with UploadedFromSiteID
 		mediaItem := models.MediaItem{
-			SiteID:       site.ID,
-			Filename:     filename,
-			OriginalName: fileHeader.Filename,
-			FileSize:     fileSize,
-			MimeType:     mimeType,
-			UploadedBy:   user.ID,
+			SiteID:             site.ID,
+			Filename:           filename,
+			OriginalName:       fileHeader.Filename,
+			FileSize:           fileSize,
+			MimeType:           mimeType,
+			UploadedBy:         user.ID,
+			UploadedFromSiteID: &site.ID, // Track which site uploaded this
 		}
 
 		if err := db.GetDB().Create(&mediaItem).Error; err != nil {
@@ -191,12 +271,18 @@ func MediaUploadHandler(c *gin.Context) {
 			return
 		}
 
-		// Generate thumbnail
-		srcPath := filepath.Join(site.SiteDir, "uploads", filename)
-		thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", filename)
-		if err := media.GenerateThumbnail(srcPath, thumbPath, 200, 200); err != nil {
-			// Log error but don't fail the upload
-			fmt.Printf("Warning: Failed to generate thumbnail for %s: %v\n", filename, err)
+		// Generate thumbnail in centralized location
+		mediaDir := config.GetString("storage.media_dir")
+		srcPath := filepath.Join(mediaDir, filename)
+		thumbsDir := filepath.Join(mediaDir, "thumbs")
+		if err := os.MkdirAll(thumbsDir, 0755); err != nil {
+			fmt.Printf("Warning: Failed to create thumbs directory: %v\n", err)
+		} else {
+			thumbPath := filepath.Join(thumbsDir, filename)
+			if err := media.GenerateThumbnail(srcPath, thumbPath, 200, 200); err != nil {
+				// Log error but don't fail the upload
+				fmt.Printf("Warning: Failed to generate thumbnail for %s: %v\n", filename, err)
+			}
 		}
 
 		uploadedItems = append(uploadedItems, mediaItem)
