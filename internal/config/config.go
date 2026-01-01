@@ -56,6 +56,7 @@ func setDefaults() {
 	v.SetDefault("storage.data_dir", "/var/lib/stinkykitty")
 	v.SetDefault("storage.sites_dir", "/var/lib/stinkykitty/sites")
 	v.SetDefault("storage.backups_dir", "/var/lib/stinkykitty/backups")
+	v.SetDefault("storage.media_dir", "/var/lib/stinkykitty/media")
 
 	// Backup defaults
 	v.SetDefault("backups.path", "/var/lib/stinkykitty/backups")
