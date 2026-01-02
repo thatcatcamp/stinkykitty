@@ -2,12 +2,15 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
+	"github.com/thatcatcamp/stinkykitty/internal/db"
+	"github.com/thatcatcamp/stinkykitty/internal/media"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
-	"github.com/thatcatcamp/stinkykitty/internal/uploads"
 )
 
 // UploadImageHandler handles image file uploads
@@ -20,6 +23,14 @@ func UploadImageHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
+	// Get user from context
+	userVal, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	user := userVal.(*models.User)
+
 	// Get uploaded file from form
 	file, err := c.FormFile("image")
 	if err != nil {
@@ -27,32 +38,37 @@ func UploadImageHandler(c *gin.Context) {
 		return
 	}
 
-	// Validate file size (max 5MB)
-	const maxFileSize = 5 * 1024 * 1024 // 5MB in bytes
-	if file.Size > maxFileSize {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File size must be less than 5MB"})
-		return
-	}
-
-	// Validate it's an image file
-	if !uploads.IsImageFile(file.Filename) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "File must be an image (jpg, jpeg, png, gif, webp)"})
-		return
-	}
-
-	// Use site directory from database
-	siteDir := site.SiteDir
-
-	// Save the file
-	webPath, err := uploads.SaveUploadedFile(file, siteDir)
+	// Save the file to centralized storage
+	filename, err := media.SaveToCentralizedStorage(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save image: %v", err)})
 		return
 	}
+
+	// Create media item record for tracking
+	mediaItem := models.MediaItem{
+		SiteID:             site.ID,
+		UploadedFromSiteID: &site.ID,
+		Filename:           filename,
+		OriginalName:       file.Filename,
+		FileSize:           file.Size,
+		MimeType:           file.Header.Get("Content-Type"),
+		UploadedBy:         user.ID,
+	}
+	db.GetDB().Create(&mediaItem) // Ignore error - not critical
+
+	// Generate thumbnail
+	mediaDir := config.GetString("storage.media_dir")
+	if mediaDir == "" {
+		mediaDir = "/var/lib/stinkykitty/media"
+	}
+	srcPath := filepath.Join(mediaDir, "uploads", filename)
+	thumbPath := filepath.Join(mediaDir, "uploads", "thumbs", filename)
+	_ = media.GenerateThumbnail(srcPath, thumbPath, 200, 200)
 
 	// Return the web-accessible URL
 	c.JSON(http.StatusOK, gin.H{
-		"url": webPath,
+		"url": "/assets/" + filename,
 	})
 }
 

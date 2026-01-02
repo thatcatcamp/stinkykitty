@@ -10,12 +10,12 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/db"
 	"github.com/thatcatcamp/stinkykitty/internal/media"
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/search"
-	"github.com/thatcatcamp/stinkykitty/internal/uploads"
 )
 
 // CreateBlockHandler creates a new block for a page
@@ -277,7 +277,7 @@ func EditBlockHandler(c *gin.Context) {
     <div class="container">
         <h1>Edit Text Block</h1>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="content">Content:</label>
             <textarea id="content" name="content" rows="10">%s</textarea>
             <div class="button-group">
@@ -399,7 +399,7 @@ func EditBlockHandler(c *gin.Context) {
             <img src="%s" alt="%s">
         </div>
         <form method="POST" action="/admin/pages/%s/blocks/%s" enctype="multipart/form-data">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <input type="hidden" name="url" value="%s">
 
             <label for="image">Upload New Image (optional):</label>
@@ -472,7 +472,7 @@ func EditBlockHandler(c *gin.Context) {
     <div class="container">
         <h1>Edit Heading Block</h1>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="level">Heading Level:</label>
             <select id="level" name="level">
                 <option value="2"%s>H2 - Large Heading</option>
@@ -556,7 +556,7 @@ func EditBlockHandler(c *gin.Context) {
     <div class="container">
         <h1>Edit Quote Block</h1>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="quote">Quote:</label>
             <textarea id="quote" name="quote" required>%s</textarea>
             <label for="author">Author (optional):</label>
@@ -603,7 +603,7 @@ func EditBlockHandler(c *gin.Context) {
     <div class="container">
         <h1>Edit Button Block</h1>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="text">Button Text:</label>
             <input type="text" id="text" name="text" value="%s" required>
             <label for="url">Link URL:</label>
@@ -667,7 +667,7 @@ func EditBlockHandler(c *gin.Context) {
     <div class="container">
         <h1>Edit Video Block</h1>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="url">Video URL:</label>
             <input type="text" id="url" name="url" value="%s" required placeholder="YouTube or Vimeo URL">
             <p class="help-text">Paste a YouTube or Vimeo video URL (e.g., https://www.youtube.com/watch?v=...)</p>
@@ -712,7 +712,7 @@ func EditBlockHandler(c *gin.Context) {
     <div class="container">
         <h1>Edit Spacer Block</h1>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="height">Height (pixels):</label>
             <input type="number" id="height" name="height" value="%d" required min="1" max="500">
             <p class="help-text">Vertical spacing in pixels (recommended: 20-100)</p>
@@ -771,7 +771,7 @@ func EditBlockHandler(c *gin.Context) {
             <strong>Note:</strong> This block displays a contact form where visitors can send you messages. Their email address is shown to you, but not to other visitors.
         </div>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="title">Form Title:</label>
             <input type="text" id="title" name="title" value="%s" placeholder="Get in Touch">
             <p class="help-text">The heading displayed above the contact form</p>
@@ -985,7 +985,7 @@ func EditBlockHandler(c *gin.Context) {
 
                 if (url && colIndex !== undefined) {
                     // Insert image tag
-                    const html = '<img src="' + url + '" style="width: 100%; height: auto;">\n';
+                    const html = '<img src="' + url + '" style="width: 100%%; height: auto;">\n';
                     insertAtCursor(colIndex, html);
                 }
             }
@@ -999,7 +999,7 @@ func EditBlockHandler(c *gin.Context) {
             <strong>Note:</strong> Create a multi-column layout with 2, 3, or 4 columns. Content will be displayed side by side on larger screens.
         </div>
         <form method="POST" action="/admin/pages/%s/blocks/%s">
-            ` + middleware.GetCSRFTokenHTML(c) + `
+            `+middleware.GetCSRFTokenHTML(c)+`
             <label for="column_count">Number of Columns:</label>
             <select id="column_count" name="column_count" onchange="updateColumnInputs()">
                 <option value="2"%s>2 Columns</option>
@@ -1128,29 +1128,34 @@ func UpdateBlockHandler(c *gin.Context) {
 			// Check if new image was uploaded
 			fileHeader, err := c.FormFile("image")
 			if err == nil && fileHeader != nil {
-				// Upload new image (reuse existing upload utility)
-				webPath, err := uploads.SaveUploadedFile(fileHeader, site.SiteDir)
+				// Upload new image to centralized storage
+				filename, err := media.SaveToCentralizedStorage(fileHeader)
 				if err != nil {
 					c.String(http.StatusBadRequest, fmt.Sprintf("Failed to upload image: %v", err))
 					return
 				}
-				url = webPath
+				url = "/assets/" + filename
 
 				// Create media item record for tracking
 				mediaItem := models.MediaItem{
-					SiteID:       site.ID,
-					Filename:     filepath.Base(webPath),
-					OriginalName: fileHeader.Filename,
-					FileSize:     fileHeader.Size,
-					MimeType:     fileHeader.Header.Get("Content-Type"),
-					UploadedBy:   user.ID,
+					SiteID:             site.ID,
+					UploadedFromSiteID: &site.ID,
+					Filename:           filename,
+					OriginalName:       fileHeader.Filename,
+					FileSize:           fileHeader.Size,
+					MimeType:           fileHeader.Header.Get("Content-Type"),
+					UploadedBy:         user.ID,
 				}
 				db.GetDB().Create(&mediaItem) // Ignore error - not critical
 
-				// Generate thumbnail if possible
-				srcPath := filepath.Join(site.SiteDir, "uploads", mediaItem.Filename)
-				thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", mediaItem.Filename)
-				_ = media.GenerateThumbnail(srcPath, thumbPath, 200, 200) // Ignore error
+				// Generate thumbnail in centralized storage
+				mediaDir := config.GetString("storage.media_dir")
+				if mediaDir == "" {
+					mediaDir = "/var/lib/stinkykitty/media"
+				}
+				srcPath := filepath.Join(mediaDir, "uploads", filename)
+				thumbPath := filepath.Join(mediaDir, "uploads", "thumbs", filename)
+				_ = media.GenerateThumbnail(srcPath, thumbPath, 200, 200)
 			}
 			// Otherwise, keep existing URL
 		}

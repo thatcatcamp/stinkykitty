@@ -209,7 +209,7 @@ func ServeHomepage(c *gin.Context) {
 		.search-bar { margin: 30px 0; }
 		.search-bar form { display: flex; gap: 10px; }
 		.search-bar input[type="text"] { flex: 1; padding: 10px; border: 1px solid var(--color-border); border-radius: 4px; font-size: 16px; }
-		.search-bar button { padding: 10px 20px; background: var(--color-primary); color: var(--color-bg); border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+		.search-bar button { padding: 10px 20px; background: var(--color-primary); color: var(--color-primary-contrast); border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
 		.search-bar button:hover { opacity: 0.9; }
 
 		/* Mobile responsive */
@@ -333,7 +333,7 @@ func ServePage(c *gin.Context) {
 		.search-bar { margin: 30px 0; }
 		.search-bar form { display: flex; gap: 10px; }
 		.search-bar input[type="text"] { flex: 1; padding: 10px; border: 1px solid var(--color-border); border-radius: 4px; font-size: 16px; }
-		.search-bar button { padding: 10px 20px; background: var(--color-primary); color: var(--color-bg); border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+		.search-bar button { padding: 10px 20px; background: var(--color-primary); color: var(--color-primary-contrast); border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
 		.search-bar button:hover { opacity: 0.9; }
 
 		/* Mobile responsive */

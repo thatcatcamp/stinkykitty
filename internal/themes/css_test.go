@@ -23,6 +23,7 @@ func TestGeneratedCSSContainsVariables(t *testing.T) {
 
 	expectedVars := []string{
 		"--color-primary",
+		"--color-primary-contrast",
 		"--color-secondary",
 		"--color-bg",
 		"--color-surface",

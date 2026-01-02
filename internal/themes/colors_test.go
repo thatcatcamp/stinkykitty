@@ -63,11 +63,12 @@ func TestGeneratedColorsAreHex(t *testing.T) {
 	colors := GenerateColors(palette, false)
 
 	colorMap := map[string]string{
-		"Primary":    colors.Primary,
-		"Secondary":  colors.Secondary,
-		"Background": colors.Background,
-		"Surface":    colors.Surface,
-		"Text":       colors.Text,
+		"Primary":         colors.Primary,
+		"PrimaryContrast": colors.PrimaryContrast,
+		"Secondary":       colors.Secondary,
+		"Background":      colors.Background,
+		"Surface":         colors.Surface,
+		"Text":            colors.Text,
 	}
 
 	for name, color := range colorMap {

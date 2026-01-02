@@ -1011,114 +1011,6 @@ func NewImageBlockFormHandler(c *gin.Context) {
         .preview img { max-width: 100%; height: auto; display: block; margin-bottom: 10px; }
         #uploadProgress { display: none; margin-top: 10px; padding: 10px; background: #e7f3ff; border-radius: 4px; color: #0066cc; }
     </style>
-    <script>
-        let uploadedImageURL = '';
-
-        async function handleImageUpload() {
-            const fileInput = document.getElementById('imageFile');
-            const file = fileInput.files[0];
-
-            if (!file) {
-                alert('Please select an image file');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('image', file);
-
-            const progress = document.getElementById('uploadProgress');
-            progress.style.display = 'block';
-            progress.textContent = 'Uploading...';
-
-            const csrfToken = decodeURIComponent(
-                document.cookie
-                    .split('; ')
-                    .find(row => row.startsWith('csrf_token='))
-                    ?.substring('csrf_token='.length) || ''
-            );
-
-            console.log('CSRF Debug - All cookies:', document.cookie);
-            console.log('CSRF Debug - Token found:', csrfToken);
-            console.log('CSRF Debug - Token length:', csrfToken.length);
-
-            if (!csrfToken) {
-                progress.textContent = 'Error: CSRF token not found in cookies';
-                progress.style.background = '#f8d7da';
-                progress.style.color = '#721c24';
-                return;
-            }
-
-            try {
-                const response = await fetch('/admin/upload/image', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || 'Upload failed');
-                }
-
-                const data = await response.json();
-                uploadedImageURL = data.url;
-
-                // Show preview
-                const preview = document.getElementById('preview');
-                const previewImg = document.getElementById('previewImg');
-                previewImg.src = data.url;
-                preview.style.display = 'block';
-
-                progress.textContent = 'Upload complete!';
-                progress.style.background = '#d4edda';
-                progress.style.color = '#155724';
-
-                // Enable submit button
-                document.getElementById('submitBtn').disabled = false;
-            } catch (error) {
-                progress.textContent = 'Upload failed. Please try again.';
-                progress.style.background = '#f8d7da';
-                progress.style.color = '#721c24';
-            }
-        }
-
-        function handleSubmit(event) {
-            event.preventDefault();
-
-            if (!uploadedImageURL) {
-                alert('Please upload an image first');
-                return;
-            }
-
-            const alt = document.getElementById('altText').value;
-            const caption = document.getElementById('caption').value;
-
-            // Create JSON data
-            const blockData = {
-                url: uploadedImageURL,
-                alt: alt,
-                caption: caption
-            };
-
-            // Submit form with JSON data
-            const form = document.getElementById('imageBlockForm');
-            const dataInput = document.createElement('input');
-            dataInput.type = 'hidden';
-            dataInput.name = 'data';
-            dataInput.value = JSON.stringify(blockData);
-            form.appendChild(dataInput);
-
-            const typeInput = document.createElement('input');
-            typeInput.type = 'hidden';
-            typeInput.name = 'type';
-            typeInput.value = 'image';
-            form.appendChild(typeInput);
-
-            form.submit();
-        }
-    </script>
 </head>
 <body>
     <div class="container">
@@ -1129,14 +1021,20 @@ func NewImageBlockFormHandler(c *gin.Context) {
         <form id="imageBlockForm" method="POST" action="/admin/pages/` + pageIDStr + `/blocks" onsubmit="handleSubmit(event)">
             ` + csrfToken + `
             <div class="form-group">
-                <label for="imageFile">Select Image</label>
-                <input type="file" id="imageFile" accept="image/*" onchange="handleImageUpload()" required>
+                <label>Select Image Source</label>
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                    <button type="button" class="btn" onclick="document.getElementById('imageFile').click()">Upload File</button>
+                    <span>or</span>
+                    <button type="button" class="btn" style="background: #28a745;" onclick="openMediaPicker()">Choose from Library</button>
+                </div>
+                <input type="file" id="imageFile" accept="image/*" onchange="handleImageUpload()" style="display: none;">
                 <p class="help-text">Supported formats: JPG, PNG, GIF, WebP</p>
                 <div id="uploadProgress"></div>
             </div>
 
             <div id="preview" class="preview">
                 <img id="previewImg" alt="Preview">
+                <p id="previewFilename" class="help-text" style="word-break: break-all;"></p>
             </div>
 
             <div class="form-group">
@@ -1154,6 +1052,130 @@ func NewImageBlockFormHandler(c *gin.Context) {
             <a href="/admin/pages/` + pageIDStr + `/edit" class="btn btn-secondary" style="text-decoration: none;">Cancel</a>
         </form>
     </div>
+
+    <script>
+        let uploadedImageURL = '';
+
+        function openMediaPicker() {
+            const width = 800;
+            const height = 600;
+            const left = (window.screen.width / 2) - (width / 2);
+            const top = (window.screen.height / 2) - (height / 2);
+            
+            window.open(
+                '/admin/media/picker',
+                'mediaPicker',
+                'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes'
+            );
+        }
+
+        // Listen for message from picker
+        window.addEventListener('message', function(event) {
+            if (event.origin !== window.location.origin) return;
+
+            if (event.data && event.data.type === 'image-selected') {
+                uploadedImageURL = event.data.url;
+                
+                // Show preview
+                const preview = document.getElementById('preview');
+                const previewImg = document.getElementById('previewImg');
+                const previewFilename = document.getElementById('previewFilename');
+                
+                previewImg.src = event.data.url;
+                previewFilename.textContent = 'Selected: ' + event.data.filename;
+                preview.style.display = 'block';
+
+                // Enable submit
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        async function handleImageUpload() {
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const progress = document.getElementById('uploadProgress');
+            progress.style.display = 'block';
+            progress.textContent = 'Uploading...';
+            progress.style.background = '#e7f3ff';
+            progress.style.color = '#0066cc';
+
+            const csrfToken = decodeURIComponent(
+                document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith('csrf_token='))
+                    ?.substring('csrf_token='.length) || ''
+            );
+
+            try {
+                const response = await fetch('/admin/upload/image', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': csrfToken },
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                const data = await response.json();
+                uploadedImageURL = data.url;
+
+                // Show preview
+                const preview = document.getElementById('preview');
+                const previewImg = document.getElementById('previewImg');
+                const previewFilename = document.getElementById('previewFilename');
+                
+                previewImg.src = data.url;
+                previewFilename.textContent = 'Uploaded: ' + file.name;
+                preview.style.display = 'block';
+
+                progress.textContent = 'Upload complete!';
+                progress.style.background = '#d4edda';
+                progress.style.color = '#155724';
+
+                document.getElementById('submitBtn').disabled = false;
+            } catch (error) {
+                progress.textContent = 'Upload failed. Please try again.';
+                progress.style.background = '#f8d7da';
+                progress.style.color = '#721c24';
+            }
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            if (!uploadedImageURL) {
+                alert('Please select or upload an image first');
+                return;
+            }
+
+            const alt = document.getElementById('altText').value;
+            const caption = document.getElementById('caption').value;
+
+            const blockData = {
+                url: uploadedImageURL,
+                alt: alt,
+                caption: caption
+            };
+
+            const form = document.getElementById('imageBlockForm');
+            const dataInput = document.createElement('input');
+            dataInput.type = 'hidden';
+            dataInput.name = 'data';
+            dataInput.value = JSON.stringify(blockData);
+            form.appendChild(dataInput);
+
+            const typeInput = document.createElement('input');
+            typeInput.type = 'hidden';
+            typeInput.name = 'type';
+            typeInput.value = 'image';
+            form.appendChild(typeInput);
+
+            form.submit();
+        }
+    </script>
 </body>
 </html>`
 

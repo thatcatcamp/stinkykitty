@@ -12,26 +12,17 @@ import (
 
 // MediaPickerHandler shows modal picker for block editors
 func MediaPickerHandler(c *gin.Context) {
-	// Get site from context
-	siteVal, exists := c.Get("site")
-	if !exists {
-		c.String(http.StatusInternalServerError, "Site not found")
-		return
-	}
-	site := siteVal.(*models.Site)
-
-	// Get all media items for this site
+	// Get all media items
 	var mediaItems []models.MediaItem
-	db.GetDB().Where("site_id = ?", site.ID).
-		Preload("Tags").
+	db.GetDB().Preload("Tags").
 		Order("created_at DESC").
 		Find(&mediaItems)
 
 	// Build image grid
 	var imageGrid string
 	for _, item := range mediaItems {
-		thumbURL := fmt.Sprintf("/uploads/thumbs/%s", item.Filename)
-		imageURL := fmt.Sprintf("/uploads/%s", item.Filename)
+		thumbURL := fmt.Sprintf("/assets/thumbs/%s", item.Filename)
+		imageURL := fmt.Sprintf("/assets/%s", item.Filename)
 
 		imageGrid += fmt.Sprintf(`
 		<div class="picker-card" onclick="selectImage('%s', '%s')">
@@ -173,7 +164,7 @@ func MediaPickerHandler(c *gin.Context) {
 
 						if (result.success && result.items && result.items.length > 0) {
 							const uploadedItem = result.items[0];
-							const url = '/uploads/' + uploadedItem.Filename;
+							const url = '/assets/' + uploadedItem.Filename;
 							selectImage(url, uploadedItem.OriginalName);
 						} else {
 							alert('Upload failed: ' + (result.error || 'Unknown error'));

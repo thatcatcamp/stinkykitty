@@ -293,7 +293,7 @@ func TestAdminSettingsSaveHandlerWithSiteInfo(t *testing.T) {
 	form.Add("site_title", "Test Camp")
 	form.Add("site_tagline", "Adventure Awaits")
 	form.Add("google_analytics_id", "G-TESTID123")
-	form.Add("copyright_text", "© 2025 Test Camp")
+	form.Add("copyright_text", "© 2025-2026 Test Camp")
 	form.Add("palette", "indigo")
 	form.Add("dark_mode", "true")
 
@@ -321,8 +321,8 @@ func TestAdminSettingsSaveHandlerWithSiteInfo(t *testing.T) {
 	if updatedSite.GoogleAnalyticsID != "G-TESTID123" {
 		t.Errorf("Expected GA ID 'G-TESTID123', got %s", updatedSite.GoogleAnalyticsID)
 	}
-	if updatedSite.CopyrightText != "© 2025 Test Camp" {
-		t.Errorf("Expected copyright '© 2025 Test Camp', got %s", updatedSite.CopyrightText)
+	if updatedSite.CopyrightText != "© 2025-2026 Test Camp" {
+		t.Errorf("Expected copyright '© 2025-2026 Test Camp', got %s", updatedSite.CopyrightText)
 	}
 	if updatedSite.ThemePalette != "indigo" {
 		t.Errorf("Expected palette 'indigo', got %s", updatedSite.ThemePalette)
@@ -445,7 +445,7 @@ func TestAdminSettingsSaveHandlerTrimsWhitespace(t *testing.T) {
 	form.Add("site_title", "  Test Camp  ")
 	form.Add("site_tagline", "  Adventure Awaits  ")
 	form.Add("google_analytics_id", "  G-TEST123  ")
-	form.Add("copyright_text", "  © 2025  ")
+	form.Add("copyright_text", "  © 2025-2026  ")
 	form.Add("palette", "indigo")
 
 	c.Request = httptest.NewRequest("POST", "/admin/settings", strings.NewReader(form.Encode()))
@@ -472,7 +472,7 @@ func TestAdminSettingsSaveHandlerTrimsWhitespace(t *testing.T) {
 	if updatedSite.GoogleAnalyticsID != "G-TEST123" {
 		t.Errorf("Expected trimmed GA ID 'G-TEST123', got '%s'", updatedSite.GoogleAnalyticsID)
 	}
-	if updatedSite.CopyrightText != "© 2025" {
-		t.Errorf("Expected trimmed copyright '© 2025', got '%s'", updatedSite.CopyrightText)
+	if updatedSite.CopyrightText != "© 2025-2026" {
+		t.Errorf("Expected trimmed copyright '© 2025-2026', got '%s'", updatedSite.CopyrightText)
 	}
 }

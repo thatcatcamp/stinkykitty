@@ -2,11 +2,7 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,88 +15,6 @@ import (
 	"github.com/thatcatcamp/stinkykitty/internal/middleware"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 )
-
-// saveToCentralizedStorage saves an uploaded file to centralized media storage
-func saveToCentralizedStorage(file *multipart.FileHeader) (string, error) {
-	// Get centralized media directory from config
-	mediaDir := config.GetString("storage.media_dir")
-	if mediaDir == "" {
-		return "", fmt.Errorf("storage.media_dir not configured")
-	}
-
-	// Create media directory if it doesn't exist
-	if err := os.MkdirAll(mediaDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create media directory: %w", err)
-	}
-
-	// Generate random filename to avoid conflicts
-	randomBytes := make([]byte, 16)
-	if _, err := rand.Read(randomBytes); err != nil {
-		return "", fmt.Errorf("failed to generate random filename: %w", err)
-	}
-	randomName := hex.EncodeToString(randomBytes)
-
-	// Get file extension
-	ext := filepath.Ext(file.Filename)
-	if ext == "" {
-		ext = ".jpg" // default
-	}
-
-	// Create full path (save to uploads subdirectory)
-	filename := randomName + ext
-	uploadsDir := filepath.Join(mediaDir, "uploads")
-	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create uploads directory: %w", err)
-	}
-	fullPath := filepath.Join(uploadsDir, filename)
-
-	// Open uploaded file
-	src, err := file.Open()
-	if err != nil {
-		return "", fmt.Errorf("failed to open uploaded file: %w", err)
-	}
-	defer src.Close()
-
-	// Validate file content type using Magic Bytes
-	buffer := make([]byte, 512)
-	n, err := src.Read(buffer)
-	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("failed to read file for validation: %w", err)
-	}
-
-	contentType := http.DetectContentType(buffer[:n])
-	validTypes := []string{"image/jpeg", "image/png", "image/gif", "image/webp"}
-	isValid := false
-	for _, validType := range validTypes {
-		if contentType == validType {
-			isValid = true
-			break
-		}
-	}
-	if !isValid {
-		return "", fmt.Errorf("invalid file type: %s (only images allowed)", contentType)
-	}
-
-	// Reset file pointer to beginning after validation
-	if _, err := src.Seek(0, io.SeekStart); err != nil {
-		return "", fmt.Errorf("failed to reset file pointer: %w", err)
-	}
-
-	// Create destination file
-	dst, err := os.Create(fullPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create destination file: %w", err)
-	}
-	defer dst.Close()
-
-	// Copy file contents
-	if _, err := io.Copy(dst, src); err != nil {
-		return "", fmt.Errorf("failed to copy file: %w", err)
-	}
-
-	// Return just the filename (not web path)
-	return filename, nil
-}
 
 // MediaLibraryHandler shows the main media library page
 func MediaLibraryHandler(c *gin.Context) {
@@ -250,7 +164,7 @@ func MediaUploadHandler(c *gin.Context) {
 
 	for _, fileHeader := range files {
 		// Save file to centralized storage
-		filename, err := saveToCentralizedStorage(fileHeader)
+		filename, err := media.SaveToCentralizedStorage(fileHeader)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to upload %s: %v", fileHeader.Filename, err)})
 			return
@@ -262,6 +176,7 @@ func MediaUploadHandler(c *gin.Context) {
 
 		// Create database record with UploadedFromSiteID
 		mediaItem := models.MediaItem{
+			SiteID:             site.ID,
 			Filename:           filename,
 			OriginalName:       fileHeader.Filename,
 			FileSize:           fileSize,

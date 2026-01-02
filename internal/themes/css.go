@@ -6,9 +6,12 @@ import "fmt"
 // GenerateCSS generates CSS with color variables from colors struct
 func GenerateCSS(colors *Colors) string {
 	return fmt.Sprintf(`:root {
-  --color-primary: %s;
-  --color-secondary: %s;
-  --color-bg: %s;
+    --color-primary: %s;
+    --color-primary-contrast: %s;
+    --color-accent: var(--color-primary);
+    --color-accent-contrast: var(--color-primary-contrast);
+    --color-secondary: %s;
+    --color-bg: %s;
   --color-surface: %s;
   --color-text: %s;
   --color-text-muted: %s;
@@ -37,12 +40,17 @@ a:hover {
 /* Button styles */
 button, .btn {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-primary-contrast);
   border: none;
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
   transition: opacity 0.2s;
+}
+
+button a, .btn a {
+  color: inherit !important;
+  text-decoration: none;
 }
 
 button:hover, .btn:hover {
@@ -96,7 +104,7 @@ h1, h2, h3, h4, h5, h6 {
 .success { color: var(--color-success); }
 .error, .danger { color: var(--color-error); }
 .warning { color: var(--color-warning); }
-`, colors.Primary, colors.Secondary, colors.Background, colors.Surface,
-		colors.Text, colors.TextMuted, colors.Border,
+`, colors.Primary, colors.PrimaryContrast, colors.Secondary, colors.Background,
+		colors.Surface, colors.Text, colors.TextMuted, colors.Border,
 		colors.Success, colors.Error, colors.Warning)
 }

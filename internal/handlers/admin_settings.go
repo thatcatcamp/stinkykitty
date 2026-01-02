@@ -295,7 +295,7 @@ func AdminSettingsHandler(c *gin.Context) {
 
                     <div class="form-group">
                         <label for="copyright_text">Copyright Text</label>
-                        <input type="text" id="copyright_text" name="copyright_text" value="` + html.EscapeString(site.CopyrightText) + `" placeholder="© 2025 Your Camp Name. All rights reserved.">
+                        <input type="text" id="copyright_text" name="copyright_text" value="` + html.EscapeString(site.CopyrightText) + `" placeholder="© 2025-2026 Your Camp Name. All rights reserved.">
                         <small style="color: var(--color-text-secondary); display: block; margin-top: 4px;">
                             Custom copyright text for your site footer. Use {year} for current year, {site} for site name.
                         </small>
