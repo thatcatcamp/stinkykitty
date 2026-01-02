@@ -391,6 +391,14 @@ func MediaDeleteHandler(c *gin.Context) {
 	}
 	site := siteVal.(*models.Site)
 
+	// Get user from context
+	userVal, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	user := userVal.(*models.User)
+
 	// Get media item ID
 	mediaIDStr := c.Param("id")
 	mediaID, err := strconv.ParseUint(mediaIDStr, 10, 32)
@@ -399,10 +407,16 @@ func MediaDeleteHandler(c *gin.Context) {
 		return
 	}
 
-	// Get media item
+	// Get media item (centralized - no site filtering)
 	var mediaItem models.MediaItem
-	if err := db.GetDB().Where("id = ? AND site_id = ?", mediaID, site.ID).First(&mediaItem).Error; err != nil {
+	if err := db.GetDB().First(&mediaItem, mediaID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Media item not found"})
+		return
+	}
+
+	// Permission check: only uploader or global admin can delete
+	if mediaItem.UploadedBy != user.ID && !user.IsGlobalAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this media"})
 		return
 	}
 
@@ -427,15 +441,21 @@ func MediaDeleteHandler(c *gin.Context) {
 		return
 	}
 
-	// Delete file
-	filePath := filepath.Join(site.SiteDir, "uploads", mediaItem.Filename)
+	// Get centralized media directory
+	mediaDir := config.GetString("storage.media_dir")
+	if mediaDir == "" {
+		mediaDir = "/var/lib/stinkykitty/media"
+	}
+
+	// Delete file from centralized storage
+	filePath := filepath.Join(mediaDir, mediaItem.Filename)
 	if err := os.Remove(filePath); err != nil {
 		// Log error but continue (file might already be deleted)
 		fmt.Printf("Warning: Failed to delete file %s: %v\n", filePath, err)
 	}
 
-	// Delete thumbnail
-	thumbPath := filepath.Join(site.SiteDir, "uploads", "thumbs", mediaItem.Filename)
+	// Delete thumbnail from centralized storage
+	thumbPath := filepath.Join(mediaDir, "thumbs", mediaItem.Filename)
 	os.Remove(thumbPath) // Ignore error
 
 	// Delete database record (and tags via cascade)
