@@ -141,8 +141,14 @@ var serverStartCmd = &cobra.Command{
 			siteGroup.GET("/robots.txt", handlers.RobotsTxtHandler)
 			siteGroup.GET("/sitemap.xml", handlers.SitemapXMLHandler)
 
-			// Static file serving for uploads (site-specific)
-			siteGroup.GET("/uploads/*filepath", handlers.ServeUploadedFile)
+			// Legacy upload serving - redirect to centralized assets
+			siteGroup.GET("/uploads/*filepath", func(c *gin.Context) {
+				filename := c.Param("filepath")
+				if len(filename) > 0 && filename[0] == '/' {
+					filename = filename[1:]
+				}
+				c.Redirect(http.StatusMovedPermanently, "/assets/"+filename)
+			})
 
 			// Admin routes
 			adminGroup := siteGroup.Group("/admin")
