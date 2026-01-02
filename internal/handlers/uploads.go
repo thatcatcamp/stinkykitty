@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/thatcatcamp/stinkykitty/internal/config"
 	"github.com/thatcatcamp/stinkykitty/internal/models"
 	"github.com/thatcatcamp/stinkykitty/internal/uploads"
 )
@@ -41,9 +40,8 @@ func UploadImageHandler(c *gin.Context) {
 		return
 	}
 
-	// Get site directory from config
-	sitesRoot := config.GetString("sites_root")
-	siteDir := filepath.Join(sitesRoot, site.Subdomain)
+	// Use site directory from database
+	siteDir := site.SiteDir
 
 	// Save the file
 	webPath, err := uploads.SaveUploadedFile(file, siteDir)

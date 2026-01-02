@@ -46,9 +46,13 @@ func saveToCentralizedStorage(file *multipart.FileHeader) (string, error) {
 		ext = ".jpg" // default
 	}
 
-	// Create full path
+	// Create full path (save to uploads subdirectory)
 	filename := randomName + ext
-	fullPath := filepath.Join(mediaDir, filename)
+	uploadsDir := filepath.Join(mediaDir, "uploads")
+	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create uploads directory: %w", err)
+	}
+	fullPath := filepath.Join(uploadsDir, filename)
 
 	// Open uploaded file
 	src, err := file.Open()
@@ -273,8 +277,8 @@ func MediaUploadHandler(c *gin.Context) {
 
 		// Generate thumbnail in centralized location
 		mediaDir := config.GetString("storage.media_dir")
-		srcPath := filepath.Join(mediaDir, filename)
-		thumbsDir := filepath.Join(mediaDir, "thumbs")
+		srcPath := filepath.Join(mediaDir, "uploads", filename)
+		thumbsDir := filepath.Join(mediaDir, "uploads", "thumbs")
 		if err := os.MkdirAll(thumbsDir, 0755); err != nil {
 			fmt.Printf("Warning: Failed to create thumbs directory: %v\n", err)
 		} else {

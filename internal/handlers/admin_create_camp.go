@@ -940,7 +940,7 @@ func CreateCampSubmitHandler(c *gin.Context) {
 	}
 
 	// Create site with Hello World page
-	sitesDir := "/var/lib/stinkykitty/sites"
+	sitesDir := config.GetString("storage.sites_dir")
 	site, err := sites.CreateSite(db.GetDB(), subdomain, ownerID, sitesDir)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "failed to create site: "+err.Error())
