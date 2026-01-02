@@ -118,7 +118,7 @@ func MediaLibraryHandler(c *gin.Context) {
 
 	// Auto-import existing uploads on first use
 	var itemCount int64
-	db.GetDB().Model(&models.MediaItem{}).Where("site_id = ?", site.ID).Count(&itemCount)
+	db.GetDB().Model(&models.MediaItem{}).Count(&itemCount)
 
 	if itemCount == 0 {
 		// First time accessing media library - import existing uploads
@@ -151,8 +151,8 @@ func MediaLibraryHandler(c *gin.Context) {
 	// Get orphaned filter
 	showOrphaned := c.Query("orphaned") == "true"
 
-	// Query media items
-	query := db.GetDB().Where("site_id = ?", site.ID)
+	// Query media items - show ALL media across all sites
+	query := db.GetDB().Model(&models.MediaItem{})
 
 	if search != "" {
 		query = query.Where("original_name LIKE ? OR filename LIKE ?", "%"+search+"%", "%"+search+"%")
@@ -167,9 +167,10 @@ func MediaLibraryHandler(c *gin.Context) {
 	var mediaItems []models.MediaItem
 	var totalCount int64
 
-	db.GetDB().Model(&models.MediaItem{}).Where("site_id = ?", site.ID).Count(&totalCount)
+	db.GetDB().Model(&models.MediaItem{}).Count(&totalCount)
 
-	query.Preload("Tags").
+	query.Preload("User").
+		Preload("Tags").
 		Limit(limit).
 		Offset(offset).
 		Order("created_at DESC").
@@ -465,12 +466,25 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 	// Build image grid
 	var imageGrid string
 	for _, item := range items {
-		thumbURL := fmt.Sprintf("/uploads/thumbs/%s", item.Filename)
+		thumbURL := fmt.Sprintf("/assets/thumbs/%s", item.Filename)
 
 		// Build tag badges
 		var tagBadges string
 		for _, tag := range item.Tags {
 			tagBadges += fmt.Sprintf(`<span class="tag-badge">%s</span>`, tag.TagName)
+		}
+
+		// Get uploader email
+		uploaderEmail := "Unknown"
+		if item.User.Email != "" {
+			uploaderEmail = item.User.Email
+		}
+
+		// Check if user can delete (uploader or global admin)
+		canDelete := item.UploadedBy == user.ID || user.IsGlobalAdmin
+		deleteButton := ""
+		if canDelete {
+			deleteButton = fmt.Sprintf(`<button class="btn-small btn-danger" onclick="deleteMedia(%d)">Delete</button>`, item.ID)
 		}
 
 		imageGrid += fmt.Sprintf(`
@@ -481,15 +495,16 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			<div class="media-info">
 				<div class="media-filename" title="%s">%s</div>
 				<div class="media-tags">%s</div>
+				<div class="media-uploader">Uploaded by: %s</div>
 				<div class="media-date">%s</div>
 				<div class="media-actions">
 					<button class="btn-small" onclick="editTags(%d)">Edit Tags</button>
-					<button class="btn-small btn-danger" onclick="deleteMedia(%d)">Delete</button>
+					%s
 				</div>
 			</div>
 		</div>
 		`, item.ID, thumbURL, item.OriginalName, item.OriginalName, item.OriginalName,
-			tagBadges, item.CreatedAt.Format("Jan 2, 2006"), item.ID, item.ID)
+			tagBadges, uploaderEmail, item.CreatedAt.Format("Jan 2, 2006"), item.ID, deleteButton)
 	}
 
 	if len(items) == 0 {
@@ -617,6 +632,12 @@ func renderMediaLibraryPage(c *gin.Context, site *models.Site, user *models.User
 			border-radius: var(--radius-sm);
 			font-size: 12px;
 			margin-right: 4px;
+		}
+
+		.media-uploader {
+			font-size: 12px;
+			color: var(--color-text-secondary);
+			margin-bottom: var(--spacing-sm);
 		}
 
 		.media-date {
