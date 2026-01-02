@@ -180,7 +180,7 @@ func MediaLibraryHandler(c *gin.Context) {
 	var displayItems []models.MediaItem
 	if showOrphaned {
 		for _, item := range mediaItems {
-			usages := media.FindImageUsage(db.GetDB(), site.ID, "/uploads/"+item.Filename)
+			usages := media.FindImageUsage(db.GetDB(), site.ID, "/assets/"+item.Filename)
 			if len(usages) == 0 {
 				displayItems = append(displayItems, item)
 			}
@@ -407,7 +407,7 @@ func MediaDeleteHandler(c *gin.Context) {
 	}
 
 	// Check usage
-	imageURL := "/uploads/" + mediaItem.Filename
+	imageURL := "/assets/" + mediaItem.Filename
 	usages := media.FindImageUsage(db.GetDB(), site.ID, imageURL)
 
 	// If checking usage (not force delete)
