@@ -14,7 +14,7 @@ import (
 // ServeAssetHandler serves uploaded media from centralized storage
 func ServeAssetHandler(c *gin.Context) {
 	// Get filename from URL
-	filename := c.Param("filename")
+	filename := c.Param("filepath")
 	if filename == "" {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
